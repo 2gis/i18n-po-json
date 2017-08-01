@@ -1,5 +1,6 @@
 import { I18NEntry, SingleI18NEntry, PluralI18NEntry } from 'i18n-proto';
 import { PoData, PoOptions } from './types';
+import { panic, warning } from './panic';
 
 const commentRegex = /^\s*#\s?\.\s?(.*)$/i;
 const occurenceRegex = /^\s*#\s?:\s?(.*)$/i;
@@ -21,16 +22,16 @@ export function parseHeader(header: string): PoData['meta'] {
 
 }
 
-export function parseEntry(entry: string, withComments: boolean, withOccurences: boolean): I18NEntry {
+export function parseEntry(entry: string, withComments: boolean, withOccurences: boolean): I18NEntry | undefined {
   let entries = entry.split("\n").filter((e) => !!e);
   let lastMode = null;
 
   let comments: string[] = [];
   let occurences: string[] = [];
-  let context: string;
-  let msgid: string;
-  let msgidPlural: string;
-  let msgStr: string;
+  let context: string | undefined;
+  let msgid: string | undefined;
+  let msgidPlural: string | undefined;
+  let msgStr: string | undefined;
   let msgStrPlural: string[] = [];
 
   for (let entry of entries) {
@@ -107,14 +108,38 @@ export function parseEntry(entry: string, withComments: boolean, withOccurences:
   }
 
   if (msgidPlural || msgStrPlural.length > 0) {
-    if (msgidPlural && msgStrPlural.length > 0) {
-      // valid plural form
-      return {
-        type: 'plural',
-        entry: [msgid, msgidPlural],
-
-      }
+    if (!msgidPlural || msgStrPlural.length == 0) {
+      panic('Invalid plural entry: absent msgid_plural or msgstr[N] strings', [msgid, msgidPlural]);
+      return;
     }
+
+    // valid plural form
+    return {
+      type: 'plural',
+      entry: [msgid, msgidPlural],
+      context: context,
+      translations: msgStrPlural,
+      occurences: occurences.length > 0 ? occurences : undefined,
+      comments: comments.length > 0 ? comments : undefined
+    }
+  }
+
+  if (!msgid) {
+    panic('Invalid single entry: empty msgid string', [msgid]);
+    return;
+  }
+
+  if (!msgStr) {
+    warning('String is untranslated', [msgid]);
+  }
+
+  return {
+    type: 'single',
+    entry: msgid,
+    context: context,
+    translation: msgStr || '',
+    occurences: occurences.length > 0 ? occurences : undefined,
+    comments: comments.length > 0 ? comments : undefined
   }
 }
 
