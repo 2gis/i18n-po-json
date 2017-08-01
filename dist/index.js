@@ -49,10 +49,10 @@ else {
 }
 function makeOutput(data, output) {
     if (output === '__stdout') {
-        console.log(data);
+        console.log(JSON.stringify(data));
     }
     else {
-        fs_1.writeFile(output, data, function (e) {
+        fs_1.writeFile(output, JSON.stringify(data), function (e) {
             if (e) {
                 console.error(e);
                 process.exit(1);

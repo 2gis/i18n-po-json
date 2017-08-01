@@ -1,7 +1,7 @@
 import * as cli from 'cli';
 import { readFile, writeFile } from 'fs';
 import { convert } from './src/convert';
-import { PoOptions } from './src/types';
+import { PoOptions, PoData } from './src/types';
 
 const options = cli.parse({
   src: ['s', 'A source PO file to process', 'string', '__stdin'],
@@ -63,11 +63,11 @@ if (options.src === '__stdin') {
   });
 }
 
-function makeOutput(data: string, output: string) {
+function makeOutput(data: PoData, output: string) {
   if (output === '__stdout') {
-    console.log(data);
+    console.log(JSON.stringify(data));
   } else {
-    writeFile(output, data, (e) => {
+    writeFile(output, JSON.stringify(data), (e) => {
       if (e) {
         console.error(e);
         process.exit(1);
