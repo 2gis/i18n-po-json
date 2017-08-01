@@ -5,6 +5,11 @@ import { panic, warning } from './panic';
 const commentRegex = /^\s*#\s?\.\s?(.*)$/i;
 const occurenceRegex = /^\s*#\s?:\s?(.*)$/i;
 
+export function splitInTwo(src: string, separator: string = ' '): [string, string] {
+  let i = src.indexOf(separator);
+  return [src.slice(0, i), src.slice(i + 1)];
+}
+
 export function convert(data: string, opts: PoOptions): PoData {
   // entries should be separated with double CRLF
   let entries = data.split("\n\n").filter((e) => !!e);
@@ -22,7 +27,7 @@ export function parseHeader(header: string): PoData['meta'] {
   let { msgStr } = parse(entries, false, false);
   let headers = msgStr.split("\n");
   return headers.reduce<PoData['meta']>((acc, header) => {
-    let [name, value] = header.split(/\s*:\s*/, 2);
+    let [name, value] = splitInTwo(header, ':').map((v) => v.replace(/^\s+|\s+$/g, ''));
     switch (name) {
       case "Project-Id-Version":
         acc.projectIdVersion = value;
@@ -108,7 +113,7 @@ export function parseEntry(entry: string, withComments: boolean, withOccurences:
     type: 'single',
     entry: msgid,
     context: context,
-    translation: msgStr || '',
+    translation: msgStr || undefined,
     occurences: occurences.length > 0 ? occurences : undefined,
     comments: comments.length > 0 ? comments : undefined
   }
@@ -172,7 +177,7 @@ function parse(entries: string[], withComments: boolean, withOccurences: boolean
     }
 
     // common instructions
-    let [instruction, body] = entry.split(' ', 2);
+    let [instruction, body] = splitInTwo(entry);
     switch (instruction) {
       case 'msgid':
         msgid = JSON.parse(body);

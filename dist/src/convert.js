@@ -3,6 +3,12 @@ exports.__esModule = true;
 var panic_1 = require("./panic");
 var commentRegex = /^\s*#\s?\.\s?(.*)$/i;
 var occurenceRegex = /^\s*#\s?:\s?(.*)$/i;
+function splitInTwo(src, separator) {
+    if (separator === void 0) { separator = ' '; }
+    var i = src.indexOf(separator);
+    return [src.slice(0, i), src.slice(i + 1)];
+}
+exports.splitInTwo = splitInTwo;
 function convert(data, opts) {
     // entries should be separated with double CRLF
     var entries = data.split("\n\n").filter(function (e) { return !!e; });
@@ -19,7 +25,7 @@ function parseHeader(header) {
     var msgStr = parse(entries, false, false).msgStr;
     var headers = msgStr.split("\n");
     return headers.reduce(function (acc, header) {
-        var _a = header.split(/\s*:\s*/, 2), name = _a[0], value = _a[1];
+        var _a = splitInTwo(header, ':').map(function (v) { return v.replace(/^\s+|\s+$/g, ''); }), name = _a[0], value = _a[1];
         switch (name) {
             case "Project-Id-Version":
                 acc.projectIdVersion = value;
@@ -97,7 +103,7 @@ function parseEntry(entry, withComments, withOccurences) {
         type: 'single',
         entry: msgid,
         context: context,
-        translation: msgStr || '',
+        translation: msgStr || undefined,
         occurences: occurences.length > 0 ? occurences : undefined,
         comments: comments.length > 0 ? comments : undefined
     };
@@ -157,7 +163,7 @@ function parse(entries, withComments, withOccurences) {
             }
         }
         // common instructions
-        var _a = entry.split(' ', 2), instruction = _a[0], body = _a[1];
+        var _a = splitInTwo(entry), instruction = _a[0], body = _a[1];
         switch (instruction) {
             case 'msgid':
                 msgid = JSON.parse(body);

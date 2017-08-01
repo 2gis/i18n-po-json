@@ -9,10 +9,11 @@ var options = cli.parse({
     withOccurences: ['n', 'Include occurences info into JSON file', 'bool', false],
     withComments: ['c', 'Include comments into JSON file', 'bool', false],
     withMeta: ['m', 'Include meta info into JSON file', 'bool', false],
+    prettify: ['p', 'Prettify JSON output', 'bool', false],
     help: ['h', 'Show some help', 'bool', false]
 });
 if (options.help) {
-    console.log("i18n PO -> JSON converter\n\nOptions:\n   -h / --help                   Show this help\n   -s / --src FILE               Define input JSON file name. Defaults \n                                 to stdin.\n   -o / --output FILE            Define output POT file name. If a file \n                                 already exists, it's contents will be\n                                 overwritten. Defaults to stdout.\n   -n / --withOccurences         Include occurences info into JSON file, \n                                 parsed from \"#: ...\" comments.\n   -c / --withComments           Include comments into JSON file, parsed\n                                 from \"#. ...\" comments.\n   -m / --withMeta               Include parsed PO header into JSON file.\n");
+    console.log("i18n PO -> JSON converter\n\nOptions:\n   -h / --help                   Show this help\n   -s / --src FILE               Define input JSON file name. Defaults \n                                 to stdin.\n   -o / --output FILE            Define output POT file name. If a file \n                                 already exists, it's contents will be\n                                 overwritten. Defaults to stdout.\n   -n / --withOccurences         Include occurences info into JSON file, \n                                 parsed from \"#: ...\" comments.\n   -c / --withComments           Include comments into JSON file, parsed\n                                 from \"#. ...\" comments.\n   -m / --withMeta               Include parsed PO header into JSON file.\n   -p / --prettify               Pretty-print JSON output.\n");
     process.exit(0);
 }
 console.warn('Running conversion for file: ', options.src);
@@ -24,7 +25,7 @@ var convertOpts = {
 if (options.src === '__stdin') {
     cli.withStdin(function (data) {
         try {
-            makeOutput(convert_1.convert(data, options), options.output);
+            makeOutput(convert_1.convert(data, options), options.output, options.prettify);
         }
         catch (e) {
             console.error(e);
@@ -39,7 +40,7 @@ else {
             process.exit(1);
         }
         try {
-            makeOutput(convert_1.convert(data, options), options.output);
+            makeOutput(convert_1.convert(data, options), options.output, options.prettify);
         }
         catch (e) {
             console.error(e);
@@ -47,12 +48,12 @@ else {
         }
     });
 }
-function makeOutput(data, output) {
+function makeOutput(data, output, prettify) {
     if (output === '__stdout') {
-        console.log(JSON.stringify(data));
+        console.log(JSON.stringify(data, undefined, prettify ? '  ' : undefined));
     }
     else {
-        fs_1.writeFile(output, JSON.stringify(data), function (e) {
+        fs_1.writeFile(output, JSON.stringify(data, undefined, prettify ? '  ' : undefined), function (e) {
             if (e) {
                 console.error(e);
                 process.exit(1);

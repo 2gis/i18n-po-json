@@ -9,6 +9,7 @@ const options = cli.parse({
   withOccurences: ['n', 'Include occurences info into JSON file', 'bool', false],
   withComments: ['c', 'Include comments into JSON file', 'bool', false],
   withMeta: ['m', 'Include meta info into JSON file', 'bool', false],
+  prettify: ['p', 'Prettify JSON output', 'bool', false],
   help: ['h', 'Show some help', 'bool', false]
 });
 
@@ -27,6 +28,7 @@ Options:
    -c / --withComments           Include comments into JSON file, parsed
                                  from "#. ..." comments.
    -m / --withMeta               Include parsed PO header into JSON file.
+   -p / --prettify               Pretty-print JSON output.
 `);
   process.exit(0);
 }
@@ -42,7 +44,7 @@ const convertOpts: PoOptions = {
 if (options.src === '__stdin') {
   cli.withStdin((data) => {
     try {
-      makeOutput(convert(data, options), options.output);
+      makeOutput(convert(data, options), options.output, options.prettify);
     } catch (e) {
       console.error(e);
       process.exit(1);
@@ -55,7 +57,7 @@ if (options.src === '__stdin') {
       process.exit(1);
     }
     try {
-      makeOutput(convert(data, options), options.output);
+      makeOutput(convert(data, options), options.output, options.prettify);
     } catch (e) {
       console.error(e);
       process.exit(1);
@@ -63,11 +65,11 @@ if (options.src === '__stdin') {
   });
 }
 
-function makeOutput(data: PoData, output: string) {
+function makeOutput(data: PoData, output: string, prettify: boolean) {
   if (output === '__stdout') {
-    console.log(JSON.stringify(data));
+    console.log(JSON.stringify(data, undefined, prettify ? '  ' : undefined));
   } else {
-    writeFile(output, JSON.stringify(data), (e) => {
+    writeFile(output, JSON.stringify(data, undefined, prettify ? '  ' : undefined), (e) => {
       if (e) {
         console.error(e);
         process.exit(1);
