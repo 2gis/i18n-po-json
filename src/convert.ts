@@ -23,8 +23,8 @@ export function convert(data: string, opts: PoOptions): PoData {
 }
 
 export function parseHeader(header: string): PoData['meta'] {
-  let entries = header.split("\n").filter((e) => !!e);
-  let { msgStr } = parse(entries, false, false);
+  let entries = header.split("\n");
+  let { msgStr } = _parse(entries, false, false);
   let headers = msgStr.split("\n");
   return headers.reduce<PoData['meta']>((acc, header) => {
     let [name, value] = splitInTwo(header, ':').map((v) => v.replace(/^\s+|\s+$/g, ''));
@@ -44,7 +44,10 @@ export function parseHeader(header: string): PoData['meta'] {
       case "Last-Translator":
         let matches = value.match(/(.*)\s*<(.+?)>/)
         if (matches) {
-          acc.lastTranslator = { name: matches[1], email: matches[2] };
+          acc.lastTranslator = {
+            name: (matches[1] || '').replace(/^\s+|\s+$/g, ''),
+            email: matches[2].replace(/^\s+|\s+$/g, '')
+          };
         } else {
           warning('Last-Translator header malformed', [value]);
         }
@@ -76,12 +79,12 @@ export function parseHeader(header: string): PoData['meta'] {
 }
 
 export function parseEntry(entry: string, withComments: boolean, withOccurences: boolean): I18NEntry | undefined {
-  let entries = entry.split("\n").filter((e) => !!e);
+  let entries = entry.split("\n");
   let {
     comments, occurences,
     context, msgid, msgidPlural,
     msgStr, msgStrPlural,
-  } = parse(entries, withComments, withOccurences);
+  } = _parse(entries, withComments, withOccurences);
 
   if (msgidPlural || msgStrPlural.length > 0) {
     if (!msgidPlural || msgStrPlural.length == 0) {
@@ -119,7 +122,11 @@ export function parseEntry(entry: string, withComments: boolean, withOccurences:
   }
 }
 
-function parse(entries: string[], withComments: boolean, withOccurences: boolean) {
+// Exported for testing only!
+export function _parse(entries: string[], withComments: boolean, withOccurences: boolean) {
+  // prepare entries, trim spaces, etc
+  entries = entries.filter((e) => !!e).map((e) => e.replace(/^\s+|\s+$/g, ''));
+
   let lastMode = null;
 
   let comments: string[] = [];
@@ -132,7 +139,7 @@ function parse(entries: string[], withComments: boolean, withOccurences: boolean
 
   for (let entry of entries) {
     // string continuations
-    if (lastMode && entry.replace(/^\s+/g, '')[0] === '"') {
+    if (lastMode && entry[0] === '"') {
       switch (lastMode) {
         case 'msgid':
           msgid += JSON.parse(entry);
@@ -148,14 +155,15 @@ function parse(entries: string[], withComments: boolean, withOccurences: boolean
           break;
         default:
           // msgstr[N] instruction explicit handler
-          let pluralMatch = lastMode.match(/msgid\[(\d+)\]/i);
+          let pluralMatch = lastMode.match(/msgstr\[(\d+)\]/i);
           if (pluralMatch) {
             msgStrPlural[pluralMatch[1]] += JSON.parse(entry);
           }
           break;
       }
-      lastMode = null;
       continue;
+    } else {
+      lastMode = null;
     }
 
     // comment
@@ -193,7 +201,7 @@ function parse(entries: string[], withComments: boolean, withOccurences: boolean
         break;
       default:
         // msgstr[N] instruction explicit handler
-        let pluralMatch = instruction.match(/msgid\[(\d+)\]/i);
+        let pluralMatch = instruction.match(/msgstr\[(\d+)\]/i);
         if (pluralMatch) {
           msgStrPlural[pluralMatch[1]] = JSON.parse(body);
         }
