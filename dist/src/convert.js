@@ -21,8 +21,8 @@ function convert(data, opts) {
 }
 exports.convert = convert;
 function parseHeader(header) {
-    var entries = header.split("\n").filter(function (e) { return !!e; });
-    var msgStr = parse(entries, false, false).msgStr;
+    var entries = header.split("\n");
+    var msgStr = _parse(entries, false, false).msgStr;
     var headers = msgStr.split("\n");
     return headers.reduce(function (acc, header) {
         var _a = splitInTwo(header, ':').map(function (v) { return v.replace(/^\s+|\s+$/g, ''); }), name = _a[0], value = _a[1];
@@ -42,7 +42,10 @@ function parseHeader(header) {
             case "Last-Translator":
                 var matches = value.match(/(.*)\s*<(.+?)>/);
                 if (matches) {
-                    acc.lastTranslator = { name: matches[1], email: matches[2] };
+                    acc.lastTranslator = {
+                        name: (matches[1] || '').replace(/^\s+|\s+$/g, ''),
+                        email: matches[2].replace(/^\s+|\s+$/g, '')
+                    };
                 }
                 else {
                     panic_1.warning('Last-Translator header malformed', [value]);
@@ -75,8 +78,8 @@ function parseHeader(header) {
 }
 exports.parseHeader = parseHeader;
 function parseEntry(entry, withComments, withOccurences) {
-    var entries = entry.split("\n").filter(function (e) { return !!e; });
-    var _a = parse(entries, withComments, withOccurences), comments = _a.comments, occurences = _a.occurences, context = _a.context, msgid = _a.msgid, msgidPlural = _a.msgidPlural, msgStr = _a.msgStr, msgStrPlural = _a.msgStrPlural;
+    var entries = entry.split("\n");
+    var _a = _parse(entries, withComments, withOccurences), comments = _a.comments, occurences = _a.occurences, context = _a.context, msgid = _a.msgid, msgidPlural = _a.msgidPlural, msgStr = _a.msgStr, msgStrPlural = _a.msgStrPlural;
     if (msgidPlural || msgStrPlural.length > 0) {
         if (!msgidPlural || msgStrPlural.length == 0) {
             panic_1.panic('Invalid plural entry: absent msgid_plural or msgstr[N] strings', [msgid, msgidPlural]);
@@ -109,7 +112,10 @@ function parseEntry(entry, withComments, withOccurences) {
     };
 }
 exports.parseEntry = parseEntry;
-function parse(entries, withComments, withOccurences) {
+// Exported for testing only!
+function _parse(entries, withComments, withOccurences) {
+    // prepare entries, trim spaces, etc
+    entries = entries.filter(function (e) { return !!e; }).map(function (e) { return e.replace(/^\s+|\s+$/g, ''); });
     var lastMode = null;
     var comments = [];
     var occurences = [];
@@ -121,7 +127,7 @@ function parse(entries, withComments, withOccurences) {
     for (var _i = 0, entries_1 = entries; _i < entries_1.length; _i++) {
         var entry = entries_1[_i];
         // string continuations
-        if (lastMode && entry.replace(/^\s+/g, '')[0] === '"') {
+        if (lastMode && entry[0] === '"') {
             switch (lastMode) {
                 case 'msgid':
                     msgid += JSON.parse(entry);
@@ -137,14 +143,16 @@ function parse(entries, withComments, withOccurences) {
                     break;
                 default:
                     // msgstr[N] instruction explicit handler
-                    var pluralMatch = lastMode.match(/msgid\[(\d+)\]/i);
+                    var pluralMatch = lastMode.match(/msgstr\[(\d+)\]/i);
                     if (pluralMatch) {
                         msgStrPlural[pluralMatch[1]] += JSON.parse(entry);
                     }
                     break;
             }
-            lastMode = null;
             continue;
+        }
+        else {
+            lastMode = null;
         }
         // comment
         if (withComments) {
@@ -179,7 +187,7 @@ function parse(entries, withComments, withOccurences) {
                 break;
             default:
                 // msgstr[N] instruction explicit handler
-                var pluralMatch = instruction.match(/msgid\[(\d+)\]/i);
+                var pluralMatch = instruction.match(/msgstr\[(\d+)\]/i);
                 if (pluralMatch) {
                     msgStrPlural[pluralMatch[1]] = JSON.parse(body);
                 }
@@ -197,3 +205,4 @@ function parse(entries, withComments, withOccurences) {
         msgStrPlural: msgStrPlural
     };
 }
+exports._parse = _parse;
