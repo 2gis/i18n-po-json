@@ -6,6 +6,9 @@ var occurenceRegex = /^\s*#\s?:\s?(.*)$/i;
 function splitInTwo(src, separator) {
     if (separator === void 0) { separator = ' '; }
     var i = src.indexOf(separator);
+    if (i === -1) {
+        return [src, ''];
+    }
     return [src.slice(0, i), src.slice(i + 1)];
 }
 exports.splitInTwo = splitInTwo;
@@ -22,8 +25,15 @@ function convert(data, opts) {
 exports.convert = convert;
 function parseHeader(header) {
     var entries = header.split("\n");
-    var msgStr = _parse(entries, false, false).msgStr;
-    var headers = msgStr.split("\n");
+    var result;
+    try {
+        result = _parse(entries, false, false);
+    }
+    catch (e) {
+        panic_1.panic("Malformed string: can't parse: ", [e.message]);
+        return;
+    }
+    var headers = result.msgStr.split("\n");
     return headers.reduce(function (acc, header) {
         var _a = splitInTwo(header, ':').map(function (v) { return v.replace(/^\s+|\s+$/g, ''); }), name = _a[0], value = _a[1];
         switch (name) {
@@ -72,6 +82,10 @@ function parseHeader(header) {
             case "Generated-By":
                 acc.generatedBy = value;
                 break;
+            default:
+                if (name) {
+                    panic_1.warning('PO header: unknown clause', [name, value]);
+                }
         }
         return acc;
     }, {});
@@ -79,11 +93,22 @@ function parseHeader(header) {
 exports.parseHeader = parseHeader;
 function parseEntry(entry, withComments, withOccurences) {
     var entries = entry.split("\n");
-    var _a = _parse(entries, withComments, withOccurences), comments = _a.comments, occurences = _a.occurences, context = _a.context, msgid = _a.msgid, msgidPlural = _a.msgidPlural, msgStr = _a.msgStr, msgStrPlural = _a.msgStrPlural;
+    var result;
+    try {
+        result = _parse(entries, withComments, withOccurences);
+    }
+    catch (e) {
+        panic_1.panic("Malformed string: can't parse: ", [e.message]);
+        return;
+    }
+    var comments = result.comments, occurences = result.occurences, context = result.context, msgid = result.msgid, msgidPlural = result.msgidPlural, msgStr = result.msgStr, msgStrPlural = result.msgStrPlural;
     if (msgidPlural || msgStrPlural.length > 0) {
         if (!msgidPlural || msgStrPlural.length == 0) {
             panic_1.panic('Invalid plural entry: absent msgid_plural or msgstr[N] strings', [msgid, msgidPlural]);
             return;
+        }
+        if (msgStrPlural.length !== msgStrPlural.filter(function (v) { return !!v; }).length) {
+            panic_1.warning('Some of plural strings are untranslated', msgStrPlural);
         }
         // valid plural form
         return {

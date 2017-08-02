@@ -1,20 +1,42 @@
 import * as assert from 'assert';
 import { PluralI18NEntry, SingleI18NEntry } from 'i18n-proto';
 import { PoData, PoOptions } from '../src/types';
+import { overridePanic, overrideWarning } from '../src/panic';
 
 import { splitInTwo, convert, parseEntry, parseHeader, _parse } from '../src/convert';
 const xor = require('array-xor');
 
+let panics = [];
+let warnings = [];
+function preparePanic() {
+  panics = [];
+  warnings = [];
+  overridePanic((message: string, invalid: string[]) => {
+    panics.push({ message, invalid });
+  });
+  overrideWarning((message: string, invalid: string[]) => {
+    warnings.push({ message, invalid });
+  });
+}
+
 describe('PO to JSON converter: positive tests', () => {
+  beforeEach(() => preparePanic());
+
   it('Splits string in two parts', () => {
     let spacedString = 'Very long string with spaces';
     let underscoredString = 'very_long_underscored_identifier';
+    let stringWithNoSeparator = 'stringwithoutseparator';
     let splittedSpaced = splitInTwo(spacedString);
     let splittedUnderscored = splitInTwo(underscoredString, '_');
+    let splittedWithoutSeparator = splitInTwo(stringWithNoSeparator);
     assert.equal(splittedSpaced[0], 'Very');
     assert.equal(splittedSpaced[1], 'long string with spaces');
     assert.equal(splittedUnderscored[0], 'very');
     assert.equal(splittedUnderscored[1], 'long_underscored_identifier');
+    assert.equal(splittedWithoutSeparator[0], 'stringwithoutseparator');
+    assert.equal(splittedWithoutSeparator[1], '');
+    assert.equal(panics.length, 0);
+    assert.equal(warnings.length, 0);
   });
 
   it('Parses generic simple single i18n entry', () => {
@@ -35,6 +57,8 @@ describe('PO to JSON converter: positive tests', () => {
 
     let actual = _parse(entry.split("\n"), false, false);
     assert.deepEqual(actual, expected);
+    assert.equal(panics.length, 0);
+    assert.equal(warnings.length, 0);
   });
 
   it('Parses generic multiline single i18n entry', () => {
@@ -58,6 +82,8 @@ describe('PO to JSON converter: positive tests', () => {
 
     let actual = _parse(entry.split("\n"), false, false);
     assert.deepEqual(actual, expected);
+    assert.equal(panics.length, 0);
+    assert.equal(warnings.length, 0);
   });
 
   it('Parses generic full single i18n entry', () => {
@@ -83,6 +109,8 @@ describe('PO to JSON converter: positive tests', () => {
 
     let actual = _parse(entry.split("\n"), true, true);
     assert.deepEqual(actual, expected);
+    assert.equal(panics.length, 0);
+    assert.equal(warnings.length, 0);
   });
 
   it('Parses generic simple plural i18n entry', () => {
@@ -105,6 +133,8 @@ describe('PO to JSON converter: positive tests', () => {
 
     let actual = _parse(entry.split("\n"), false, false);
     assert.deepEqual(actual, expected);
+    assert.equal(panics.length, 0);
+    assert.equal(warnings.length, 0);
   });
 
   it('Parses generic multiline plural i18n entry', () => {
@@ -137,6 +167,8 @@ describe('PO to JSON converter: positive tests', () => {
 
     let actual = _parse(entry.split("\n"), false, false);
     assert.deepEqual(actual, expected);
+    assert.equal(panics.length, 0);
+    assert.equal(warnings.length, 0);
   });
 
   it('Parses generic full plural i18n entry', () => {
@@ -164,6 +196,8 @@ describe('PO to JSON converter: positive tests', () => {
 
     let actual = _parse(entry.split("\n"), true, true);
     assert.deepEqual(actual, expected);
+    assert.equal(panics.length, 0);
+    assert.equal(warnings.length, 0);
   });
 
   it('Parses full PO header', () => {
@@ -204,6 +238,8 @@ describe('PO to JSON converter: positive tests', () => {
 
     let actual = parseHeader(header);
     assert.deepEqual(actual, expected);
+    assert.equal(panics.length, 0);
+    assert.equal(warnings.length, 0);
   });
 
   it('Creates valid I18NEntry from full single entry', () => {
@@ -234,6 +270,8 @@ describe('PO to JSON converter: positive tests', () => {
 
     let actual = parseEntry(entry, true, true);
     assert.deepEqual(actual, expected);
+    assert.equal(panics.length, 0);
+    assert.equal(warnings.length, 0);
   });
 
   it('Creates valid I18NEntry from full plural entry', () => {
@@ -272,5 +310,140 @@ describe('PO to JSON converter: positive tests', () => {
 
     let actual = parseEntry(entry, true, true);
     assert.deepEqual(actual, expected);
+    assert.equal(panics.length, 0);
+    assert.equal(warnings.length, 0);
+  });
+});
+
+describe('PO to JSON converter: negative tests', () => {
+  beforeEach(() => preparePanic());
+
+  it('Fails to parse invalid entry msgid + msgstr[N]', () => {
+    let entry = `
+    msgid "Some test \\"quoted\\" entry"
+    msgstr[0] "Nekiy \\"quoted\\" perevod"
+    `;
+    let result = parseEntry(entry, false, false);
+    assert.equal(result, undefined);
+    assert.equal(panics.length, 1);
+    assert.equal(warnings.length, 0);
+  });
+
+  it('Fails to parse invalid entry msgid + msgid_plural + msgstr', () => {
+    let entry = `
+    msgid "Some test \\"quoted\\" entry"
+    msgid_plural "Some plural test \\"quoted\\" entry"
+    msgstr "Nekiy \\"quoted\\" perevod"
+    `;
+    let result = parseEntry(entry, false, false);
+    assert.equal(result, undefined);
+    assert.equal(panics.length, 1);
+    assert.equal(warnings.length, 0);
+  });
+
+  it('Fails to parse invalid entry with non-existing msgid', () => {
+    let entry = `
+    msgid_plural "Some plural test \\"quoted\\" entry"
+    msgstr "Nekiy \\"quoted\\" perevod"
+    `;
+    let result = parseEntry(entry, false, false);
+    assert.equal(result, undefined);
+    assert.equal(panics.length, 1);
+    assert.equal(warnings.length, 0);
+  });
+
+  it('Fails to parse invalid entry with existing but empty msgid', () => {
+    let entry = `
+    msgid
+    msgstr "Nekiy \\"quoted\\" perevod"
+    `;
+    let result = parseEntry(entry, false, false);
+    assert.equal(result, undefined);
+    assert.equal(panics.length, 1);
+    assert.equal(warnings.length, 0);
+  });
+
+  it('Fails to parse invalid entry with existing but empty msgctxt', () => {
+    let entry = `
+    msgid "Some test \\"quoted\\" entry"
+    msgctxt
+    msgstr "Nekiy \\"quoted\\" perevod"
+    `;
+    let result = parseEntry(entry, false, false);
+    assert.equal(result, undefined);
+    assert.equal(panics.length, 1);
+    assert.equal(warnings.length, 0);
+  });
+
+  it('Fails to parse invalid entry with existing but empty msgstr', () => {
+    let entry = `
+    msgid "Some test \\"quoted\\" entry"
+    msgstr
+    `;
+    let result = parseEntry(entry, false, false);
+    assert.equal(result, undefined);
+    assert.equal(panics.length, 1);
+    assert.equal(warnings.length, 0);
+  });
+
+  it('Fails to parse invalid entry with existing but empty msgid_plural', () => {
+    let entry = `
+    msgid "Some test \\"quoted\\" entry"
+    msgid_plural
+    msgstr[0] "Nekiy \\"quoted\\" perevod"
+    `;
+    let result = parseEntry(entry, false, false);
+    assert.equal(result, undefined);
+    assert.equal(panics.length, 1);
+    assert.equal(warnings.length, 0);
+  });
+
+  it('Fails to parse invalid entry with existing but empty msgstr[N]', () => {
+    let entry = `
+    msgid "Some test \\"quoted\\" entry"
+    msgid_plural "Some plural test \\"quoted\\" entry"
+    msgstr[0]
+    `;
+    let result = parseEntry(entry, false, false);
+    assert.equal(result, undefined);
+    assert.equal(panics.length, 1);
+    assert.equal(warnings.length, 0);
+  });
+
+  it('Echoes warning for untranslated single entry', () => {
+    let entry = `
+    msgid "Some test \\"quoted\\" entry"
+    msgstr ""
+    `;
+    let result = parseEntry(entry, false, false);
+    assert.notEqual(result, undefined);
+    assert.equal(panics.length, 0);
+    assert.equal(warnings.length, 1);
+  });
+
+  it('Echoes warning for untranslated plural entry', () => {
+    let entry = `
+    msgid "Some test \\"quoted\\" entry"
+    msgid_plural "Some plural test \\"quoted\\" entry"
+    msgstr[0] ""
+    msgstr[1] ""
+    `;
+    let result = parseEntry(entry, false, false);
+    assert.notEqual(result, undefined);
+    assert.equal(panics.length, 0);
+    assert.equal(warnings.length, 1);
+  });
+
+  it('Echoes warning for unknown header entry', () => {
+    let entry = `
+    msgid ""
+    msgstr ""
+      "Unknown-Entry: value\\n"
+      "MIME-Version: 1.0\\n"
+    `;
+    let result = parseHeader(entry);
+    assert.notEqual(result, undefined);
+    assert.equal(panics.length, 0);
+    assert.equal(warnings.length, 1);
   });
 });

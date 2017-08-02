@@ -5,13 +5,26 @@ var __fgRed = "\x1b[31m";
 var __fgYellow = "\x1b[33m";
 var ERROR_PREP = __fgRed + "[i18n po->json convert ERROR] " + __reset;
 var WARN_PREP = __fgYellow + "[i18n po->json convert WARNING] " + __reset;
-function panic(message, invalidStrings) {
+var _panicImpl = function (message, invalidStrings) {
     console.error(ERROR_PREP + message);
     console.error('Problematic strings: ', invalidStrings);
-}
-exports.panic = panic;
-function warning(message, invalidStrings) {
+};
+var _warningImpl = function (message, invalidStrings) {
     console.warn(WARN_PREP + message);
     console.warn('Problematic strings: ', invalidStrings);
+};
+// Panic & warning overriding for some testing abilities
+var panicImpl = _panicImpl;
+var warningImpl = _warningImpl;
+exports.panic = function (s, invalidStrings) { return panicImpl(s, invalidStrings); };
+exports.warning = function (s, invalidStrings) { return warningImpl(s, invalidStrings); };
+function overridePanic(cb) {
+    if (cb === void 0) { cb = _panicImpl; }
+    panicImpl = cb;
 }
-exports.warning = warning;
+exports.overridePanic = overridePanic;
+function overrideWarning(cb) {
+    if (cb === void 0) { cb = _warningImpl; }
+    warningImpl = cb;
+}
+exports.overrideWarning = overrideWarning;

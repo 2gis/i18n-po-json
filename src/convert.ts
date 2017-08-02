@@ -7,6 +7,9 @@ const occurenceRegex = /^\s*#\s?:\s?(.*)$/i;
 
 export function splitInTwo(src: string, separator: string = ' '): [string, string] {
   let i = src.indexOf(separator);
+  if (i === -1) { // no separator
+    return [src, ''];
+  }
   return [src.slice(0, i), src.slice(i + 1)];
 }
 
@@ -22,10 +25,18 @@ export function convert(data: string, opts: PoOptions): PoData {
   };
 }
 
-export function parseHeader(header: string): PoData['meta'] {
+export function parseHeader(header: string): PoData['meta'] | undefined {
   let entries = header.split("\n");
-  let { msgStr } = _parse(entries, false, false);
-  let headers = msgStr.split("\n");
+  let result: _ParseRetval;
+
+  try {
+    result = _parse(entries, false, false)
+  } catch (e) {
+    panic("Malformed string: can't parse: ", [e.message]);
+    return;
+  }
+
+  let headers = result.msgStr.split("\n");
   return headers.reduce<PoData['meta']>((acc, header) => {
     let [name, value] = splitInTwo(header, ':').map((v) => v.replace(/^\s+|\s+$/g, ''));
     switch (name) {
@@ -73,6 +84,10 @@ export function parseHeader(header: string): PoData['meta'] {
       case "Generated-By":
         acc.generatedBy = value;
         break;
+      default:
+        if (name) {
+          warning('PO header: unknown clause', [name, value]);
+        }
     }
     return acc;
   }, {} as PoData['meta']);
@@ -80,16 +95,29 @@ export function parseHeader(header: string): PoData['meta'] {
 
 export function parseEntry(entry: string, withComments: boolean, withOccurences: boolean): I18NEntry | undefined {
   let entries = entry.split("\n");
+  let result: _ParseRetval;
+
+  try {
+    result = _parse(entries, withComments, withOccurences)
+  } catch (e) {
+    panic("Malformed string: can't parse: ", [e.message]);
+    return;
+  }
+
   let {
     comments, occurences,
     context, msgid, msgidPlural,
     msgStr, msgStrPlural,
-  } = _parse(entries, withComments, withOccurences);
+  } = result;
 
   if (msgidPlural || msgStrPlural.length > 0) {
     if (!msgidPlural || msgStrPlural.length == 0) {
       panic('Invalid plural entry: absent msgid_plural or msgstr[N] strings', [msgid, msgidPlural]);
       return;
+    }
+
+    if (msgStrPlural.length !== msgStrPlural.filter((v) => !!v).length) {
+      warning('Some of plural strings are untranslated', msgStrPlural);
     }
 
     // valid plural form
@@ -122,8 +150,18 @@ export function parseEntry(entry: string, withComments: boolean, withOccurences:
   }
 }
 
+type _ParseRetval = {
+  comments: string[],
+  occurences: string[],
+  context?: string,
+  msgid?: string,
+  msgidPlural?: string,
+  msgStr?: string,
+  msgStrPlural: string[]
+};
+
 // Exported for testing only!
-export function _parse(entries: string[], withComments: boolean, withOccurences: boolean) {
+export function _parse(entries: string[], withComments: boolean, withOccurences: boolean): _ParseRetval {
   // prepare entries, trim spaces, etc
   entries = entries.filter((e) => !!e).map((e) => e.replace(/^\s+|\s+$/g, ''));
 
