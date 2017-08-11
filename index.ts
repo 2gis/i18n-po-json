@@ -1,7 +1,8 @@
 import * as cli from 'cli';
 import { readFile, writeFile } from 'fs';
 import { convert } from './src/convert';
-import { PoOptions, PoData } from './src/types';
+import { PoOptions } from './src/types';
+import { TranslationJson } from 'i18n-proto';
 
 const options = cli.parse({
   src: ['s', 'A source PO file to process', 'string', '__stdin'],
@@ -65,7 +66,7 @@ if (options.src === '__stdin') {
   });
 }
 
-function makeOutput(data: PoData, output: string, prettify: boolean) {
+function makeOutput(data: TranslationJson, output: string, prettify: boolean) {
   if (output === '__stdout') {
     console.log(JSON.stringify(data, undefined, prettify ? '  ' : undefined));
   } else {

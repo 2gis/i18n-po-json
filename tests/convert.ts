@@ -1,6 +1,6 @@
 import * as assert from 'assert';
-import { PluralI18NEntry, SingleI18NEntry } from 'i18n-proto';
-import { PoData, PoOptions } from '../src/types';
+import { PluralI18NEntry, SingleI18NEntry, TranslationMeta } from 'i18n-proto';
+import { PoOptions } from '../src/types';
 import { overridePanic, overrideWarning } from '../src/panic';
 
 import { splitInTwo, convert, parseEntry, parseHeader, _parse } from '../src/convert';
@@ -218,7 +218,7 @@ describe('PO to JSON converter: positive tests', () => {
     "Generated-By: Babel 2.1.1\\n"
     `;
 
-    let expected: PoData['meta'] = {
+    let expected: TranslationMeta = {
       projectIdVersion: '2gis-online',
       reportMsgidBugsTo: 'online4@2gis.ru',
       potCreationDate: '2017-07-14 11:29+0700',

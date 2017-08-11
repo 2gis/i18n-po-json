@@ -1,5 +1,11 @@
-import { I18NEntry, SingleI18NEntry, PluralI18NEntry } from 'i18n-proto';
-import { PoData, PoOptions } from './types';
+import {
+  I18NEntry,
+  SingleI18NEntry,
+  PluralI18NEntry,
+  TranslationJson,
+  TranslationMeta
+} from 'i18n-proto';
+import { PoOptions } from './types';
 import { panic, warning } from './panic';
 
 const commentRegex = /^\s*#\s?\.\s?(.*)$/i;
@@ -13,7 +19,7 @@ export function splitInTwo(src: string, separator: string = ' '): [string, strin
   return [src.slice(0, i), src.slice(i + 1)];
 }
 
-export function convert(data: string, opts: PoOptions): PoData {
+export function convert(data: string, opts: PoOptions): TranslationJson {
   // entries should be separated with double CRLF
   let entries = data.split("\n\n").filter((e) => !!e);
   // first entry should be header
@@ -25,7 +31,7 @@ export function convert(data: string, opts: PoOptions): PoData {
   };
 }
 
-export function parseHeader(header: string): PoData['meta'] | undefined {
+export function parseHeader(header: string): TranslationMeta | undefined {
   let entries = header.split("\n");
   let result: _ParseRetval;
 
@@ -37,7 +43,7 @@ export function parseHeader(header: string): PoData['meta'] | undefined {
   }
 
   let headers = result.msgStr.split("\n");
-  return headers.reduce<PoData['meta']>((acc, header) => {
+  return headers.reduce<TranslationMeta>((acc, header) => {
     let [name, value] = splitInTwo(header, ':').map((v) => v.replace(/^\s+|\s+$/g, ''));
     switch (name) {
       case "Project-Id-Version":
@@ -90,7 +96,7 @@ export function parseHeader(header: string): PoData['meta'] | undefined {
         }
     }
     return acc;
-  }, {} as PoData['meta']);
+  }, {} as TranslationMeta);
 }
 
 export function parseEntry(entry: string, withComments: boolean, withOccurences: boolean): I18NEntry | undefined {
