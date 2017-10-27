@@ -236,7 +236,37 @@ describe('PO to JSON converter: positive tests', () => {
       generatedBy: 'Babel 2.1.1'
     };
 
-    let actual = parseHeader(header);
+    const opts = { withMeta: 'full' } as PoOptions;
+    let actual = parseHeader(header, opts);
+    assert.deepEqual(actual, expected);
+    assert.equal(panics.length, 0);
+    assert.equal(warnings.length, 0);
+  });
+
+  it('Parses plurals PO header', () => {
+    let header = `
+    msgid ""
+    msgstr ""
+    "Project-Id-Version:  2gis-online\\n"
+    "Report-Msgid-Bugs-To: online4@2gis.ru\\n"
+    "POT-Creation-Date: 2017-07-14 11:29+0700\\n"
+    "PO-Revision-Date: 2017-06-30 15:30+0700\\n"
+    "Last-Translator: 2GIS <crowdin@2gis.ru>\\n"
+    "Language: cs_CZ\\n"
+    "Language-Team: Czech\\n"
+    "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2\\n"
+    "MIME-Version: 1.0\\n"
+    "Content-Type: text/plain; charset=utf-8\\n"
+    "Content-Transfer-Encoding: 8bit\\n"
+    "Generated-By: Babel 2.1.1\\n"
+    `;
+
+    let expected = {
+      pluralForms: 'nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2'
+    };
+
+    const opts = { withMeta: 'plural' } as PoOptions;
+    let actual = parseHeader(header, opts);
     assert.deepEqual(actual, expected);
     assert.equal(panics.length, 0);
     assert.equal(warnings.length, 0);
@@ -441,7 +471,9 @@ describe('PO to JSON converter: negative tests', () => {
       "Unknown-Entry: value\\n"
       "MIME-Version: 1.0\\n"
     `;
-    let result = parseHeader(entry);
+
+    const opts = { withMeta: 'full' } as PoOptions;
+    let result = parseHeader(entry, opts);
     assert.notEqual(result, undefined);
     assert.equal(panics.length, 0);
     assert.equal(warnings.length, 1);

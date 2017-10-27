@@ -26,12 +26,16 @@ export function convert(data: string, opts: PoOptions): TranslationJson {
   let header = entries.shift();
 
   return {
-    meta: opts.withMeta ? parseHeader(header) : undefined,
+    meta: parseHeader(header, opts),
     items: entries.map((entry) => parseEntry(entry, opts.withComments, opts.withOccurences))
   };
 }
 
-export function parseHeader(header: string): TranslationMeta | undefined {
+export function parseHeader(header: string, opts: PoOptions): TranslationMeta | undefined {
+  if (!opts.withMeta) {
+    return;
+  }
+
   let entries = header.split("\n");
   let result: _ParseRetval;
 
@@ -43,8 +47,26 @@ export function parseHeader(header: string): TranslationMeta | undefined {
   }
 
   let headers = result.msgStr.split("\n");
+
+  if (opts.withMeta === 'plural') {
+    const pluralHeader = headers.filter((headerItem) => {
+      return headerItem.indexOf("Plural-Forms") === 0;
+    })[0];
+
+    if (!pluralHeader.length) {
+      return;
+    }
+
+    const value = splitInTwo(pluralHeader, ':').map((v) => v.trim())[1];
+
+    return {
+      pluralForms: value
+    } as TranslationMeta;
+
+  }
+
   return headers.reduce<TranslationMeta>((acc, header) => {
-    let [name, value] = splitInTwo(header, ':').map((v) => v.replace(/^\s+|\s+$/g, ''));
+    let [name, value] = splitInTwo(header, ':').map((v) => v.trim());
     switch (name) {
       case "Project-Id-Version":
         acc.projectIdVersion = value;
@@ -62,8 +84,8 @@ export function parseHeader(header: string): TranslationMeta | undefined {
         let matches = value.match(/(.*)\s*<(.+?)>/)
         if (matches) {
           acc.lastTranslator = {
-            name: (matches[1] || '').replace(/^\s+|\s+$/g, ''),
-            email: matches[2].replace(/^\s+|\s+$/g, '')
+            name: (matches[1] || '').trim(),
+            email: matches[2].trim()
           };
         } else {
           warning('Last-Translator header malformed', [value]);
@@ -169,7 +191,7 @@ type _ParseRetval = {
 // Exported for testing only!
 export function _parse(entries: string[], withComments: boolean, withOccurences: boolean): _ParseRetval {
   // prepare entries, trim spaces, etc
-  entries = entries.filter((e) => !!e).map((e) => e.replace(/^\s+|\s+$/g, ''));
+  entries = entries.filter((e) => !!e).map((e) => e.trim());
 
   let lastMode = null;
 

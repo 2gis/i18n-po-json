@@ -1,6 +1,6 @@
 {
   "name": "i18n-po-json",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "i18n .po to .json file converter",
   "main": "dist/index.js",
   "scripts": {
@@ -21,7 +21,8 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@types/cli": "^0.11.19",
+    "@types/get-stdin": "^5.0.1",
+    "@types/yargs": "^8.0.2",
     "array-xor": "^0.1.1",
     "browserify": "^14.4.0",
     "eslint": "3.13.1",
@@ -41,6 +42,7 @@
     "watchify": "^3.9.0"
   },
   "dependencies": {
-    "cli": "^1.0.1"
+    "get-stdin": "5.0",
+    "yargs": "8.0"
   }
 }
