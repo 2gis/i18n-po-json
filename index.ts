@@ -1,64 +1,98 @@
-import * as cli from 'cli';
 import { readFile, writeFile } from 'fs';
+import { usage, showHelp } from 'yargs';
 import { convert } from './src/convert';
-import { PoOptions } from './src/types';
 import { TranslationJson } from 'i18n-proto';
+import { PoOptions } from './src/types';
+import * as getStdin from 'get-stdin'
 
-const options = cli.parse({
-  src: ['s', 'A source PO file to process', 'string', '__stdin'],
-  output: ['o', 'Output JSON file', 'string', '__stdout'],
-  withOccurences: ['n', 'Include occurences info into JSON file', 'bool', false],
-  withComments: ['c', 'Include comments into JSON file', 'bool', false],
-  withMeta: ['m', 'Include meta info into JSON file', 'bool', false],
-  prettify: ['p', 'Prettify JSON output', 'bool', false],
-  help: ['h', 'Show some help', 'bool', false]
-});
+const yargOpts = usage('i18n PO -> JSON converter', {
+  src: {
+    alias: 's',
+    description: 'Define input JSON file name. Defaults to stdin.',
+    type: 'string',
+    default: '__stdin'
+  },
+  output: {
+    alias: 'o',
+    description: 'Define output POT file name. If a file already ' +
+    'exists, it s contents will be overwritten. Defaults to stdout.',
+    type: 'string',
+    default: '__stdout'
+  },
+  withOccurences: {
+    alias: 'n',
+    description: 'Include occurences info into JSON file, '
+    + 'parsed from "#: ..." comments.',
+    type: 'boolean',
+    default: false
+  },
+  withComments: {
+    alias: 'c',
+    description: 'Include comments into JSON file, parsed '
+    + 'from "#. ..." comments.',
+    type: 'boolean',
+    default: false
+  },
+  withMeta: {
+    alias: 'm',
+    description: 'Include parsed PO header or plural form '
+    + 'into JSON file. Add all header values'
+    + 'without any params provided. Possable values "" | "full" | "plural"',
+    type: 'string',
+    default: undefined
+  },
+  prettify: {
+    alias: 'p',
+    description: 'Pretty-print JSON output.',
+    type: 'boolean',
+    default: false
+  },
+  help: {
+    alias: 'h',
+    description: 'Show this help',
+    type: 'boolean',
+    default: false
+  }
+}).argv;
 
-if (options.help) {
-  console.log(`i18n PO -> JSON converter
-
-Options:
-   -h / --help                   Show this help
-   -s / --src FILE               Define input JSON file name. Defaults 
-                                 to stdin.
-   -o / --output FILE            Define output POT file name. If a file 
-                                 already exists, it's contents will be
-                                 overwritten. Defaults to stdout.
-   -n / --withOccurences         Include occurences info into JSON file, 
-                                 parsed from "#: ..." comments.
-   -c / --withComments           Include comments into JSON file, parsed
-                                 from "#. ..." comments.
-   -m / --withMeta               Include parsed PO header into JSON file.
-   -p / --prettify               Pretty-print JSON output.
-`);
+if (yargOpts.help) {
+  showHelp();
   process.exit(0);
 }
 
-console.warn('Running conversion for file: ', options.src);
+console.warn('Running conversion for file: ', yargOpts.src);
 
-const convertOpts: PoOptions = {
-  withOccurences: !!options.withOccurences,
-  withComments: !!options.withComments,
-  withMeta: !!options.withMeta
-};
+const parsedOptions: PoOptions = {
+  withOccurences: yargOpts.withOccurences,
+  withComments: yargOpts.withComments,
+  withMeta: false
+}
 
-if (options.src === '__stdin') {
-  cli.withStdin((data) => {
+if (yargOpts.withMeta === '' || yargOpts.withMeta === 'full') {
+  parsedOptions.withMeta = 'full';
+} else {
+  if (yargOpts.withMeta === 'plural') {
+    parsedOptions.withMeta = 'plural';
+  }
+}
+
+if (yargOpts.src === '__stdin') {
+  getStdin().then((data) => {
     try {
-      makeOutput(convert(data, options), options.output, options.prettify);
+      makeOutput(convert(data, parsedOptions), yargOpts.output, yargOpts.prettify);
     } catch (e) {
       console.error(e);
       process.exit(1);
     }
   });
 } else {
-  readFile(options.src, { encoding: 'utf-8' }, (err, data) => {
+  readFile(yargOpts.src, { encoding: 'utf-8' }, (err, data) => {
     if (err) {
       console.error(err);
       process.exit(1);
     }
     try {
-      makeOutput(convert(data, options), options.output, options.prettify);
+      makeOutput(convert(data, parsedOptions), yargOpts.output, yargOpts.prettify);
     } catch (e) {
       console.error(e);
       process.exit(1);

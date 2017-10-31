@@ -1,5 +1,5 @@
 export type PoOptions = {
   withOccurences: boolean,
   withComments: boolean,
-  withMeta: boolean,
+  withMeta: 'plural' | 'full' | false
 };

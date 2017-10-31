@@ -18,12 +18,15 @@ function convert(data, opts) {
     // first entry should be header
     var header = entries.shift();
     return {
-        meta: opts.withMeta ? parseHeader(header) : undefined,
+        meta: parseHeader(header, opts),
         items: entries.map(function (entry) { return parseEntry(entry, opts.withComments, opts.withOccurences); })
     };
 }
 exports.convert = convert;
-function parseHeader(header) {
+function parseHeader(header, opts) {
+    if (!opts.withMeta) {
+        return;
+    }
     var entries = header.split("\n");
     var result;
     try {
@@ -34,8 +37,20 @@ function parseHeader(header) {
         return;
     }
     var headers = result.msgStr.split("\n");
+    if (opts.withMeta === 'plural') {
+        var pluralHeader = headers.filter(function (headerItem) {
+            return headerItem.indexOf("Plural-Forms") === 0;
+        })[0];
+        if (!pluralHeader.length) {
+            return;
+        }
+        var value = splitInTwo(pluralHeader, ':').map(function (v) { return v.trim(); })[1];
+        return {
+            pluralForms: value
+        };
+    }
     return headers.reduce(function (acc, header) {
-        var _a = splitInTwo(header, ':').map(function (v) { return v.replace(/^\s+|\s+$/g, ''); }), name = _a[0], value = _a[1];
+        var _a = splitInTwo(header, ':').map(function (v) { return v.trim(); }), name = _a[0], value = _a[1];
         switch (name) {
             case "Project-Id-Version":
                 acc.projectIdVersion = value;
@@ -53,8 +68,8 @@ function parseHeader(header) {
                 var matches = value.match(/(.*)\s*<(.+?)>/);
                 if (matches) {
                     acc.lastTranslator = {
-                        name: (matches[1] || '').replace(/^\s+|\s+$/g, ''),
-                        email: matches[2].replace(/^\s+|\s+$/g, '')
+                        name: (matches[1] || '').trim(),
+                        email: matches[2].trim()
                     };
                 }
                 else {
@@ -140,7 +155,7 @@ exports.parseEntry = parseEntry;
 // Exported for testing only!
 function _parse(entries, withComments, withOccurences) {
     // prepare entries, trim spaces, etc
-    entries = entries.filter(function (e) { return !!e; }).map(function (e) { return e.replace(/^\s+|\s+$/g, ''); });
+    entries = entries.filter(function (e) { return !!e; }).map(function (e) { return e.trim(); });
     var lastMode = null;
     var comments = [];
     var occurences = [];
