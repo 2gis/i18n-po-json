@@ -17,22 +17,18 @@ function convert(data, opts) {
     var entries = data.split("\n\n").filter(function (e) { return !!e; });
     // first entry should be header
     var header = entries.shift();
-    var items = [];
-    items = entries.reduce(function (ret, entry) {
+    var items = entries.reduce(function (acc, entry) {
         var e = parseEntry(entry, opts.withComments, opts.withOccurences);
-        if (e) {
-            ret.push(e);
-        }
-        return ret;
-    }, items);
+        return e ? acc.concat(e) : acc;
+    }, []);
     return {
-        meta: parseHeader(header, opts),
+        meta: header ? parseHeader(header, opts) : undefined,
         items: items
     };
 }
 exports.convert = convert;
 function parseHeader(header, opts) {
-    if (!opts.withMeta || !header || header === "") {
+    if (!opts.withMeta) {
         return;
     }
     var entries = header.split("\n");
@@ -58,6 +54,9 @@ function parseHeader(header, opts) {
         };
     }
     return headers.reduce(function (acc, header) {
+        if (header === '') {
+            return acc;
+        }
         var _a = splitInTwo(header, ':').map(function (v) { return v.trim(); }), name = _a[0], value = _a[1];
         switch (name) {
             case "Project-Id-Version":
@@ -106,7 +105,8 @@ function parseHeader(header, opts) {
                 acc.generatedBy = value;
                 break;
             default:
-                if (name) {
+                // allow X- header
+                if (!/^X-/.test(name)) {
                     panic_1.warning('PO header: unknown clause', [name, value]);
                 }
         }
@@ -135,7 +135,7 @@ function parseEntry(entry, withComments, withOccurences) {
             return;
         }
         if (msgStrPlural.length !== msgStrPlural.filter(function (v) { return !!v; }).length) {
-            panic_1.warning('Some of plural strings are untranslated', msgStrPlural);
+            panic_1.warning('Some of plural strings are untranslated', [msgid].concat(msgStrPlural));
         }
         // valid plural form
         return {

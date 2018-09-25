@@ -1,6 +1,6 @@
 {
   "name": "i18n-po-json",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "i18n .po to .json file converter",
   "main": "dist/index.js",
   "scripts": {

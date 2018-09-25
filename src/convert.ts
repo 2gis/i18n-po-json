@@ -1,7 +1,5 @@
 import {
   I18NEntry,
-  SingleI18NEntry,
-  PluralI18NEntry,
   TranslationJson,
   TranslationMeta
 } from 'i18n-proto';
@@ -24,24 +22,19 @@ export function convert(data: string, opts: PoOptions): TranslationJson {
   let entries = data.split("\n\n").filter((e) => !!e);
   // first entry should be header
   let header = entries.shift();
-  let items: Array<I18NEntry> = [];
-
-  items = entries.reduce((ret, entry) => {
+  let items = entries.reduce((acc, entry) => {
     const e = parseEntry(entry, opts.withComments, opts.withOccurences);
-    if (e) {
-      ret.push(e);
-    }
-    return ret;
-   }, items);
+    return e ? acc.concat(e) : acc;
+   }, [] as Array<I18NEntry>);
 
   return {
-    meta: parseHeader(header, opts),
+    meta: header ? parseHeader(header, opts) : undefined,
     items
   };
 }
 
-export function parseHeader(header: string | undefined, opts: PoOptions): TranslationMeta | undefined {
-  if (!opts.withMeta || !header || header === "") {
+export function parseHeader(header: string, opts: PoOptions): TranslationMeta | undefined {
+  if (!opts.withMeta) {
     return;
   }
 
@@ -75,6 +68,9 @@ export function parseHeader(header: string | undefined, opts: PoOptions): Transl
   }
 
   return headers.reduce<TranslationMeta>((acc, header) => {
+    if (header === '') {
+      return acc;
+    }
     let [name, value] = splitInTwo(header, ':').map((v) => v.trim());
     switch (name) {
       case "Project-Id-Version":
@@ -122,7 +118,8 @@ export function parseHeader(header: string | undefined, opts: PoOptions): Transl
         acc.generatedBy = value;
         break;
       default:
-        if (name) {
+        // allow X- header
+        if (!/^X-/.test(name)) {
           warning('PO header: unknown clause', [name, value]);
         }
     }
@@ -159,7 +156,7 @@ export function parseEntry(entry: string, withComments: boolean, withOccurences:
     }
 
     if (msgStrPlural.length !== msgStrPlural.filter((v) => !!v).length) {
-      warning('Some of plural strings are untranslated', msgStrPlural);
+      warning('Some of plural strings are untranslated', [msgid, ...msgStrPlural]);
     }
 
     // valid plural form
