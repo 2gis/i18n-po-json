@@ -24,15 +24,24 @@ export function convert(data: string, opts: PoOptions): TranslationJson {
   let entries = data.split("\n\n").filter((e) => !!e);
   // first entry should be header
   let header = entries.shift();
+  let items: Array<I18NEntry> = [];
+
+  items = entries.reduce((ret, entry) => {
+    const e = parseEntry(entry, opts.withComments, opts.withOccurences);
+    if (e) {
+      ret.push(e);
+    }
+    return ret;
+   }, items);
 
   return {
     meta: parseHeader(header, opts),
-    items: entries.map((entry) => parseEntry(entry, opts.withComments, opts.withOccurences))
+    items
   };
 }
 
-export function parseHeader(header: string, opts: PoOptions): TranslationMeta | undefined {
-  if (!opts.withMeta) {
+export function parseHeader(header: string | undefined, opts: PoOptions): TranslationMeta | undefined {
+  if (!opts.withMeta || !header || header === "") {
     return;
   }
 
@@ -46,7 +55,7 @@ export function parseHeader(header: string, opts: PoOptions): TranslationMeta | 
     return;
   }
 
-  let headers = result.msgStr.split("\n");
+  let headers = result.msgStr ? result.msgStr.split("\n") : [];
 
   if (opts.withMeta === 'plural') {
     const pluralHeader = headers.filter((headerItem) => {
@@ -138,9 +147,14 @@ export function parseEntry(entry: string, withComments: boolean, withOccurences:
     msgStr, msgStrPlural,
   } = result;
 
+  if (!msgid) {
+    panic('Invalid single entry: empty msgid string', entries);
+    return;
+  }
+
   if (msgidPlural || msgStrPlural.length > 0) {
     if (!msgidPlural || msgStrPlural.length == 0) {
-      panic('Invalid plural entry: absent msgid_plural or msgstr[N] strings', [msgid, msgidPlural]);
+      panic('Invalid plural entry: absent msgid_plural or msgstr[N] strings', [msgid, ...entries]);
       return;
     }
 
@@ -157,11 +171,6 @@ export function parseEntry(entry: string, withComments: boolean, withOccurences:
       occurences: occurences.length > 0 ? occurences : undefined,
       comments: comments.length > 0 ? comments : undefined
     }
-  }
-
-  if (!msgid) {
-    panic('Invalid single entry: empty msgid string', [msgid]);
-    return;
   }
 
   if (!msgStr) {
@@ -223,7 +232,8 @@ export function _parse(entries: string[], withComments: boolean, withOccurences:
           // msgstr[N] instruction explicit handler
           let pluralMatch = lastMode.match(/msgstr\[(\d+)\]/i);
           if (pluralMatch) {
-            msgStrPlural[pluralMatch[1]] += JSON.parse(entry);
+            const idx = parseInt(pluralMatch[1], 10);
+            msgStrPlural[idx] += JSON.parse(entry);
           }
           break;
       }
@@ -269,7 +279,8 @@ export function _parse(entries: string[], withComments: boolean, withOccurences:
         // msgstr[N] instruction explicit handler
         let pluralMatch = instruction.match(/msgstr\[(\d+)\]/i);
         if (pluralMatch) {
-          msgStrPlural[pluralMatch[1]] = JSON.parse(body);
+          const idx = parseInt(pluralMatch[1], 10);
+          msgStrPlural[idx] = JSON.parse(body);
         }
         break;
     }
