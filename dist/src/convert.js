@@ -6,7 +6,7 @@ var occurenceRegex = /^\s*#\s?:\s?(.*)$/i;
 function splitInTwo(src, separator) {
     if (separator === void 0) { separator = ' '; }
     var i = src.indexOf(separator);
-    if (i === -1) {
+    if (i === -1) { // no separator
         return [src, ''];
     }
     return [src.slice(0, i), src.slice(i + 1)];
@@ -17,9 +17,13 @@ function convert(data, opts) {
     var entries = data.split("\n\n").filter(function (e) { return !!e; });
     // first entry should be header
     var header = entries.shift();
+    var items = entries.reduce(function (acc, entry) {
+        var e = parseEntry(entry, opts.withComments, opts.withOccurences);
+        return e ? acc.concat(e) : acc;
+    }, []);
     return {
-        meta: parseHeader(header, opts),
-        items: entries.map(function (entry) { return parseEntry(entry, opts.withComments, opts.withOccurences); })
+        meta: header ? parseHeader(header, opts) : undefined,
+        items: items
     };
 }
 exports.convert = convert;
@@ -36,7 +40,7 @@ function parseHeader(header, opts) {
         panic_1.panic("Malformed string: can't parse: ", [e.message]);
         return;
     }
-    var headers = result.msgStr.split("\n");
+    var headers = result.msgStr ? result.msgStr.split("\n") : [];
     if (opts.withMeta === 'plural') {
         var pluralHeader = headers.filter(function (headerItem) {
             return headerItem.indexOf("Plural-Forms") === 0;
@@ -50,6 +54,9 @@ function parseHeader(header, opts) {
         };
     }
     return headers.reduce(function (acc, header) {
+        if (header === '') {
+            return acc;
+        }
         var _a = splitInTwo(header, ':').map(function (v) { return v.trim(); }), name = _a[0], value = _a[1];
         switch (name) {
             case "Project-Id-Version":
@@ -98,7 +105,8 @@ function parseHeader(header, opts) {
                 acc.generatedBy = value;
                 break;
             default:
-                if (name) {
+                // allow X- header
+                if (!/^X-/.test(name)) {
                     panic_1.warning('PO header: unknown clause', [name, value]);
                 }
         }
@@ -117,13 +125,17 @@ function parseEntry(entry, withComments, withOccurences) {
         return;
     }
     var comments = result.comments, occurences = result.occurences, context = result.context, msgid = result.msgid, msgidPlural = result.msgidPlural, msgStr = result.msgStr, msgStrPlural = result.msgStrPlural;
+    if (!msgid) {
+        panic_1.panic('Invalid single entry: empty msgid string', entries);
+        return;
+    }
     if (msgidPlural || msgStrPlural.length > 0) {
         if (!msgidPlural || msgStrPlural.length == 0) {
-            panic_1.panic('Invalid plural entry: absent msgid_plural or msgstr[N] strings', [msgid, msgidPlural]);
+            panic_1.panic('Invalid plural entry: absent msgid_plural or msgstr[N] strings', [msgid].concat(entries));
             return;
         }
         if (msgStrPlural.length !== msgStrPlural.filter(function (v) { return !!v; }).length) {
-            panic_1.warning('Some of plural strings are untranslated', msgStrPlural);
+            panic_1.warning('Some of plural strings are untranslated', [msgid].concat(msgStrPlural));
         }
         // valid plural form
         return {
@@ -134,10 +146,6 @@ function parseEntry(entry, withComments, withOccurences) {
             occurences: occurences.length > 0 ? occurences : undefined,
             comments: comments.length > 0 ? comments : undefined
         };
-    }
-    if (!msgid) {
-        panic_1.panic('Invalid single entry: empty msgid string', [msgid]);
-        return;
     }
     if (!msgStr) {
         panic_1.warning('String is untranslated', [msgid]);
@@ -185,7 +193,8 @@ function _parse(entries, withComments, withOccurences) {
                     // msgstr[N] instruction explicit handler
                     var pluralMatch = lastMode.match(/msgstr\[(\d+)\]/i);
                     if (pluralMatch) {
-                        msgStrPlural[pluralMatch[1]] += JSON.parse(entry);
+                        var idx = parseInt(pluralMatch[1], 10);
+                        msgStrPlural[idx] += JSON.parse(entry);
                     }
                     break;
             }
@@ -229,7 +238,8 @@ function _parse(entries, withComments, withOccurences) {
                 // msgstr[N] instruction explicit handler
                 var pluralMatch = instruction.match(/msgstr\[(\d+)\]/i);
                 if (pluralMatch) {
-                    msgStrPlural[pluralMatch[1]] = JSON.parse(body);
+                    var idx = parseInt(pluralMatch[1], 10);
+                    msgStrPlural[idx] = JSON.parse(body);
                 }
                 break;
         }

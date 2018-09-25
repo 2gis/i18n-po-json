@@ -3,11 +3,14 @@ import { PluralI18NEntry, SingleI18NEntry, TranslationMeta } from 'i18n-proto';
 import { PoOptions } from '../src/types';
 import { overridePanic, overrideWarning } from '../src/panic';
 
-import { splitInTwo, convert, parseEntry, parseHeader, _parse } from '../src/convert';
-const xor = require('array-xor');
+import { splitInTwo, parseEntry, parseHeader, _parse } from '../src/convert';
 
-let panics = [];
-let warnings = [];
+interface ErrorMessage {
+  message: string,
+  invalid: string[]
+}
+let panics: Array<ErrorMessage> = [];
+let warnings: Array<ErrorMessage> = [];
 function preparePanic() {
   panics = [];
   warnings = [];
@@ -477,5 +480,20 @@ describe('PO to JSON converter: negative tests', () => {
     assert.notEqual(result, undefined);
     assert.equal(panics.length, 0);
     assert.equal(warnings.length, 1);
+  });
+
+  it('Allow X- header entry', () => {
+    let entry = `
+    msgid ""
+    msgstr ""
+      "X-Entry: value\\n"
+      "MIME-Version: 1.0\\n"
+    `;
+
+    const opts = { withMeta: 'full' } as PoOptions;
+    let result = parseHeader(entry, opts);
+    assert.notEqual(result, undefined);
+    assert.equal(panics.length, 0);
+    assert.equal(warnings.length, 0);
   });
 });

@@ -1,7 +1,5 @@
 import {
   I18NEntry,
-  SingleI18NEntry,
-  PluralI18NEntry,
   TranslationJson,
   TranslationMeta
 } from 'i18n-proto';
@@ -24,10 +22,14 @@ export function convert(data: string, opts: PoOptions): TranslationJson {
   let entries = data.split("\n\n").filter((e) => !!e);
   // first entry should be header
   let header = entries.shift();
+  let items = entries.reduce((acc, entry) => {
+    const e = parseEntry(entry, opts.withComments, opts.withOccurences);
+    return e ? acc.concat(e) : acc;
+   }, [] as Array<I18NEntry>);
 
   return {
-    meta: parseHeader(header, opts),
-    items: entries.map((entry) => parseEntry(entry, opts.withComments, opts.withOccurences))
+    meta: header ? parseHeader(header, opts) : undefined,
+    items
   };
 }
 
@@ -46,7 +48,7 @@ export function parseHeader(header: string, opts: PoOptions): TranslationMeta | 
     return;
   }
 
-  let headers = result.msgStr.split("\n");
+  let headers = result.msgStr ? result.msgStr.split("\n") : [];
 
   if (opts.withMeta === 'plural') {
     const pluralHeader = headers.filter((headerItem) => {
@@ -66,6 +68,9 @@ export function parseHeader(header: string, opts: PoOptions): TranslationMeta | 
   }
 
   return headers.reduce<TranslationMeta>((acc, header) => {
+    if (header === '') {
+      return acc;
+    }
     let [name, value] = splitInTwo(header, ':').map((v) => v.trim());
     switch (name) {
       case "Project-Id-Version":
@@ -113,7 +118,8 @@ export function parseHeader(header: string, opts: PoOptions): TranslationMeta | 
         acc.generatedBy = value;
         break;
       default:
-        if (name) {
+        // allow X- header
+        if (!/^X-/.test(name)) {
           warning('PO header: unknown clause', [name, value]);
         }
     }
@@ -138,14 +144,19 @@ export function parseEntry(entry: string, withComments: boolean, withOccurences:
     msgStr, msgStrPlural,
   } = result;
 
+  if (!msgid) {
+    panic('Invalid single entry: empty msgid string', entries);
+    return;
+  }
+
   if (msgidPlural || msgStrPlural.length > 0) {
     if (!msgidPlural || msgStrPlural.length == 0) {
-      panic('Invalid plural entry: absent msgid_plural or msgstr[N] strings', [msgid, msgidPlural]);
+      panic('Invalid plural entry: absent msgid_plural or msgstr[N] strings', [msgid, ...entries]);
       return;
     }
 
     if (msgStrPlural.length !== msgStrPlural.filter((v) => !!v).length) {
-      warning('Some of plural strings are untranslated', msgStrPlural);
+      warning('Some of plural strings are untranslated', [msgid, ...msgStrPlural]);
     }
 
     // valid plural form
@@ -157,11 +168,6 @@ export function parseEntry(entry: string, withComments: boolean, withOccurences:
       occurences: occurences.length > 0 ? occurences : undefined,
       comments: comments.length > 0 ? comments : undefined
     }
-  }
-
-  if (!msgid) {
-    panic('Invalid single entry: empty msgid string', [msgid]);
-    return;
   }
 
   if (!msgStr) {
@@ -223,7 +229,8 @@ export function _parse(entries: string[], withComments: boolean, withOccurences:
           // msgstr[N] instruction explicit handler
           let pluralMatch = lastMode.match(/msgstr\[(\d+)\]/i);
           if (pluralMatch) {
-            msgStrPlural[pluralMatch[1]] += JSON.parse(entry);
+            const idx = parseInt(pluralMatch[1], 10);
+            msgStrPlural[idx] += JSON.parse(entry);
           }
           break;
       }
@@ -269,7 +276,8 @@ export function _parse(entries: string[], withComments: boolean, withOccurences:
         // msgstr[N] instruction explicit handler
         let pluralMatch = instruction.match(/msgstr\[(\d+)\]/i);
         if (pluralMatch) {
-          msgStrPlural[pluralMatch[1]] = JSON.parse(body);
+          const idx = parseInt(pluralMatch[1], 10);
+          msgStrPlural[idx] = JSON.parse(body);
         }
         break;
     }
