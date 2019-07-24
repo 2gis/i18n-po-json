@@ -6,7 +6,8 @@ var occurenceRegex = /^\s*#\s?:\s?(.*)$/i;
 function splitInTwo(src, separator) {
     if (separator === void 0) { separator = ' '; }
     var i = src.indexOf(separator);
-    if (i === -1) { // no separator
+    if (i === -1) {
+        // no separator
         return [src, ''];
     }
     return [src.slice(0, i), src.slice(i + 1)];
@@ -14,7 +15,7 @@ function splitInTwo(src, separator) {
 exports.splitInTwo = splitInTwo;
 function convert(data, opts) {
     // entries should be separated with double CRLF
-    var entries = data.split("\n\n").filter(function (e) { return !!e; });
+    var entries = data.split('\n\n').filter(function (e) { return !!e; });
     // first entry should be header
     var header = entries.shift();
     var items = entries.reduce(function (acc, entry) {
@@ -27,11 +28,11 @@ function convert(data, opts) {
     };
 }
 exports.convert = convert;
-function parseHeader(header, opts) {
+function parseHeader(headerString, opts) {
     if (!opts.withMeta) {
         return;
     }
-    var entries = header.split("\n");
+    var entries = headerString.split('\n');
     var result;
     try {
         result = _parse(entries, false, false);
@@ -40,10 +41,10 @@ function parseHeader(header, opts) {
         panic_1.panic("Malformed string: can't parse: ", [e.message]);
         return;
     }
-    var headers = result.msgStr ? result.msgStr.split("\n") : [];
+    var headers = result.msgStr ? result.msgStr.split('\n') : [];
     if (opts.withMeta === 'plural') {
         var pluralHeader = headers.filter(function (headerItem) {
-            return headerItem.indexOf("Plural-Forms") === 0;
+            return headerItem.indexOf('Plural-Forms') === 0;
         })[0];
         if (!pluralHeader.length) {
             return;
@@ -59,19 +60,19 @@ function parseHeader(header, opts) {
         }
         var _a = splitInTwo(header, ':').map(function (v) { return v.trim(); }), name = _a[0], value = _a[1];
         switch (name) {
-            case "Project-Id-Version":
+            case 'Project-Id-Version':
                 acc.projectIdVersion = value;
                 break;
-            case "Report-Msgid-Bugs-To":
+            case 'Report-Msgid-Bugs-To':
                 acc.reportMsgidBugsTo = value;
                 break;
-            case "POT-Creation-Date":
+            case 'POT-Creation-Date':
                 acc.potCreationDate = value;
                 break;
-            case "PO-Revision-Date":
+            case 'PO-Revision-Date':
                 acc.poRevisionDate = value;
                 break;
-            case "Last-Translator":
+            case 'Last-Translator':
                 var matches = value.match(/(.*)\s*<(.+?)>/);
                 if (matches) {
                     acc.lastTranslator = {
@@ -83,25 +84,25 @@ function parseHeader(header, opts) {
                     panic_1.warning('Last-Translator header malformed', [value]);
                 }
                 break;
-            case "Language":
+            case 'Language':
                 acc.language = value;
                 break;
-            case "Language-Team":
+            case 'Language-Team':
                 acc.languageTeam = value;
                 break;
-            case "Plural-Forms":
+            case 'Plural-Forms':
                 acc.pluralForms = value;
                 break;
-            case "MIME-Version":
+            case 'MIME-Version':
                 acc.mimeVersion = value;
                 break;
-            case "Content-Type":
+            case 'Content-Type':
                 acc.contentType = value;
                 break;
-            case "Content-Transfer-Encoding":
+            case 'Content-Transfer-Encoding':
                 acc.contentTransferEncoding = value;
                 break;
-            case "Generated-By":
+            case 'Generated-By':
                 acc.generatedBy = value;
                 break;
             default:
@@ -115,7 +116,7 @@ function parseHeader(header, opts) {
 }
 exports.parseHeader = parseHeader;
 function parseEntry(entry, withComments, withOccurences) {
-    var entries = entry.split("\n");
+    var entries = entry.split('\n');
     var result;
     try {
         result = _parse(entries, withComments, withOccurences);
@@ -130,7 +131,7 @@ function parseEntry(entry, withComments, withOccurences) {
         return;
     }
     if (msgidPlural || msgStrPlural.length > 0) {
-        if (!msgidPlural || msgStrPlural.length == 0) {
+        if (!msgidPlural || msgStrPlural.length === 0) {
             panic_1.panic('Invalid plural entry: absent msgid_plural or msgstr[N] strings', [msgid].concat(entries));
             return;
         }
@@ -163,8 +164,8 @@ exports.parseEntry = parseEntry;
 // Exported for testing only!
 function _parse(entries, withComments, withOccurences) {
     // prepare entries, trim spaces, etc
-    entries = entries.filter(function (e) { return !!e; }).map(function (e) { return e.trim(); });
-    var lastMode = null;
+    var preparedEntries = entries.filter(function (e) { return !!e; }).map(function (e) { return e.trim(); });
+    var lastMode;
     var comments = [];
     var occurences = [];
     var context;
@@ -172,8 +173,8 @@ function _parse(entries, withComments, withOccurences) {
     var msgidPlural;
     var msgStr;
     var msgStrPlural = [];
-    for (var _i = 0, entries_1 = entries; _i < entries_1.length; _i++) {
-        var entry = entries_1[_i];
+    for (var _i = 0, preparedEntries_1 = preparedEntries; _i < preparedEntries_1.length; _i++) {
+        var entry = preparedEntries_1[_i];
         // string continuations
         if (lastMode && entry[0] === '"') {
             switch (lastMode) {
@@ -201,7 +202,7 @@ function _parse(entries, withComments, withOccurences) {
             continue;
         }
         else {
-            lastMode = null;
+            lastMode = undefined;
         }
         // comment
         if (withComments) {

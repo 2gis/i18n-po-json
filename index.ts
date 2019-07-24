@@ -3,56 +3,56 @@ import { usage, showHelp } from 'yargs';
 import { convert } from './src/convert';
 import { TranslationJson } from 'i18n-proto';
 import { PoOptions } from './src/types';
-import * as getStdin from 'get-stdin'
+import * as getStdin from 'get-stdin';
 
-const yargOpts = usage('i18n PO -> JSON converter', {
+const yargOpts = usage('i18n PO -> JSON converter').options({
   src: {
     alias: 's',
     description: 'Define input JSON file name. Defaults to stdin.',
     type: 'string',
-    default: '__stdin'
+    default: '__stdin',
   },
   output: {
     alias: 'o',
-    description: 'Define output POT file name. If a file already ' +
-    'exists, it s contents will be overwritten. Defaults to stdout.',
+    description:
+      'Define output POT file name. If a file already ' +
+      'exists, it s contents will be overwritten. Defaults to stdout.',
     type: 'string',
-    default: '__stdout'
+    default: '__stdout',
   },
   withOccurences: {
     alias: 'n',
-    description: 'Include occurences info into JSON file, '
-    + 'parsed from "#: ..." comments.',
+    description: 'Include occurences info into JSON file, ' + 'parsed from "#: ..." comments.',
     type: 'boolean',
-    default: false
+    default: false,
   },
   withComments: {
     alias: 'c',
-    description: 'Include comments into JSON file, parsed '
-    + 'from "#. ..." comments.',
+    description: 'Include comments into JSON file, parsed ' + 'from "#. ..." comments.',
     type: 'boolean',
-    default: false
+    default: false,
   },
   withMeta: {
     alias: 'm',
-    description: 'Include parsed PO header or plural form '
-    + 'into JSON file. Add all header values'
-    + 'without any params provided. Possable values "" | "full" | "plural"',
+    description:
+      'Include parsed PO header or plural form ' +
+      'into JSON file. Add all header values' +
+      'without any params provided. Possable values "" | "full" | "plural"',
     type: 'string',
-    default: undefined
+    default: undefined,
   },
   prettify: {
     alias: 'p',
     description: 'Pretty-print JSON output.',
     type: 'boolean',
-    default: false
+    default: false,
   },
   help: {
     alias: 'h',
     description: 'Show this help',
     type: 'boolean',
-    default: false
-  }
+    default: false,
+  },
 }).argv;
 
 if (yargOpts.help) {
@@ -65,8 +65,8 @@ console.warn('Running conversion for file: ', yargOpts.src);
 const parsedOptions: PoOptions = {
   withOccurences: yargOpts.withOccurences,
   withComments: yargOpts.withComments,
-  withMeta: false
-}
+  withMeta: false,
+};
 
 if (yargOpts.withMeta === '' || yargOpts.withMeta === 'full') {
   parsedOptions.withMeta = 'full';

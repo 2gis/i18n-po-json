@@ -4,7 +4,7 @@ var fs_1 = require("fs");
 var yargs_1 = require("yargs");
 var convert_1 = require("./src/convert");
 var getStdin = require("get-stdin");
-var yargOpts = yargs_1.usage('i18n PO -> JSON converter', {
+var yargOpts = yargs_1.usage('i18n PO -> JSON converter').options({
     src: {
         alias: 's',
         description: 'Define input JSON file name. Defaults to stdin.',
@@ -20,23 +20,21 @@ var yargOpts = yargs_1.usage('i18n PO -> JSON converter', {
     },
     withOccurences: {
         alias: 'n',
-        description: 'Include occurences info into JSON file, '
-            + 'parsed from "#: ..." comments.',
+        description: 'Include occurences info into JSON file, ' + 'parsed from "#: ..." comments.',
         type: 'boolean',
         "default": false
     },
     withComments: {
         alias: 'c',
-        description: 'Include comments into JSON file, parsed '
-            + 'from "#. ..." comments.',
+        description: 'Include comments into JSON file, parsed ' + 'from "#. ..." comments.',
         type: 'boolean',
         "default": false
     },
     withMeta: {
         alias: 'm',
-        description: 'Include parsed PO header or plural form '
-            + 'into JSON file. Add all header values'
-            + 'without any params provided. Possable values "" | "full" | "plural"',
+        description: 'Include parsed PO header or plural form ' +
+            'into JSON file. Add all header values' +
+            'without any params provided. Possable values "" | "full" | "plural"',
         type: 'string',
         "default": undefined
     },
