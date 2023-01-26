@@ -5,7 +5,7 @@ import { panic, warning } from './panic';
 const commentRegex = /^\s*#\s?\.\s?(.*)$/i;
 const occurenceRegex = /^\s*#\s?:\s?(.*)$/i;
 
-export function splitInTwo(src: string, separator: string = ' '): [string, string] {
+export function splitInTwo(src: string, separator = ' '): [string, string] {
   const i = src.indexOf(separator);
   if (i === -1) {
     // no separator
@@ -19,13 +19,10 @@ export function convert(data: string, opts: PoOptions): TranslationJson {
   const entries = data.split('\n\n').filter((e) => !!e);
   // first entry should be header
   const header = entries.shift();
-  const items = entries.reduce(
-    (acc, entry) => {
-      const e = parseEntry(entry, opts.withComments, opts.withOccurences);
-      return e ? acc.concat(e) : acc;
-    },
-    [] as I18NEntry[],
-  );
+  const items = entries.reduce((acc, entry) => {
+    const e = parseEntry(entry, opts.withComments, opts.withOccurences);
+    return e ? acc.concat(e) : acc;
+  }, [] as I18NEntry[]);
 
   return {
     meta: header ? parseHeader(header, opts) : undefined,
@@ -44,7 +41,7 @@ export function parseHeader(headerString: string, opts: PoOptions): TranslationM
   try {
     result = _parse(entries, false, false);
   } catch (e) {
-    panic("Malformed string: can't parse: ", [e.message]);
+    panic("Malformed string: can't parse: ", [e instanceof Error ? e.message : '']);
     return;
   }
 
@@ -66,67 +63,64 @@ export function parseHeader(headerString: string, opts: PoOptions): TranslationM
     } as TranslationMeta;
   }
 
-  return headers.reduce<TranslationMeta>(
-    (acc, header) => {
-      if (header === '') {
-        return acc;
-      }
-      const [name, value] = splitInTwo(header, ':').map((v) => v.trim());
-      switch (name) {
-        case 'Project-Id-Version':
-          acc.projectIdVersion = value;
-          break;
-        case 'Report-Msgid-Bugs-To':
-          acc.reportMsgidBugsTo = value;
-          break;
-        case 'POT-Creation-Date':
-          acc.potCreationDate = value;
-          break;
-        case 'PO-Revision-Date':
-          acc.poRevisionDate = value;
-          break;
-        case 'Last-Translator':
-          const matches = value.match(/(.*)\s*<(.+?)>/);
-          if (matches) {
-            acc.lastTranslator = {
-              name: (matches[1] || '').trim(),
-              email: matches[2].trim(),
-            };
-          } else {
-            warning('Last-Translator header malformed', [value]);
-          }
-          break;
-        case 'Language':
-          acc.language = value;
-          break;
-        case 'Language-Team':
-          acc.languageTeam = value;
-          break;
-        case 'Plural-Forms':
-          acc.pluralForms = value;
-          break;
-        case 'MIME-Version':
-          acc.mimeVersion = value;
-          break;
-        case 'Content-Type':
-          acc.contentType = value;
-          break;
-        case 'Content-Transfer-Encoding':
-          acc.contentTransferEncoding = value;
-          break;
-        case 'Generated-By':
-          acc.generatedBy = value;
-          break;
-        default:
-          // allow X- header
-          if (!/^X-/.test(name)) {
-            warning('PO header: unknown clause', [name, value]);
-          }
-      }
+  return headers.reduce<TranslationMeta>((acc, header) => {
+    if (header === '') {
       return acc;
-    },
-    {} as TranslationMeta,
-  );
+    }
+    const [name, value] = splitInTwo(header, ':').map((v) => v.trim());
+    switch (name) {
+      case 'Project-Id-Version':
+        acc.projectIdVersion = value;
+        break;
+      case 'Report-Msgid-Bugs-To':
+        acc.reportMsgidBugsTo = value;
+        break;
+      case 'POT-Creation-Date':
+        acc.potCreationDate = value;
+        break;
+      case 'PO-Revision-Date':
+        acc.poRevisionDate = value;
+        break;
+      case 'Last-Translator':
+        const matches = value.match(/(.*)\s*<(.+?)>/);
+        if (matches) {
+          acc.lastTranslator = {
+            name: (matches[1] || '').trim(),
+            email: matches[2].trim(),
+          };
+        } else {
+          warning('Last-Translator header malformed', [value]);
+        }
+        break;
+      case 'Language':
+        acc.language = value;
+        break;
+      case 'Language-Team':
+        acc.languageTeam = value;
+        break;
+      case 'Plural-Forms':
+        acc.pluralForms = value;
+        break;
+      case 'MIME-Version':
+        acc.mimeVersion = value;
+        break;
+      case 'Content-Type':
+        acc.contentType = value;
+        break;
+      case 'Content-Transfer-Encoding':
+        acc.contentTransferEncoding = value;
+        break;
+      case 'Generated-By':
+        acc.generatedBy = value;
+        break;
+      default:
+        // allow X- header
+        if (!/^X-/.test(name)) {
+          warning('PO header: unknown clause', [name, value]);
+        }
+    }
+    return acc;
+  }, {} as TranslationMeta);
 }
 
 export function parseEntry(
@@ -140,7 +134,7 @@ export function parseEntry(
   try {
     result = _parse(entries, withComments, withOccurences);
   } catch (e) {
-    panic("Malformed string: can't parse: ", [e.message]);
+    panic("Malformed string: can't parse: ", [e instanceof Error ? e.message : '']);
     return;
   }
 

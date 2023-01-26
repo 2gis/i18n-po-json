@@ -12,6 +12,6 @@
     "noFallthroughCasesInSwitch": true,
     "declaration": true
   },
-  "files": ["index.ts", "src/convert.ts", "src/panic.ts", "src/types.ts"],
+  "files": ["index.ts", "src/cli.ts", "src/convert.ts", "src/panic.ts", "src/types.ts"],
   "compileOnSave": false
 }
