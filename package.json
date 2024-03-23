@@ -8,7 +8,8 @@
     "lint": "eslint . --ext .js,.ts,.tsx",
     "test": "jest",
     "typecheck": "tsc -p . --noEmit",
-    "build": "tsc -p . --outDir dist"
+    "build": "tsc -p . --outDir dist",
+    "prepare": "yarn build"
   },
   "keywords": [
     "i18n"
