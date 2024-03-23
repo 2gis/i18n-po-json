@@ -4,7 +4,9 @@
     "paths": {
       "tslib": ["./node_modules/tslib/tslib.d.ts"]
     },
-    "target": "es5",
+    "target": "es2020",
+    "moduleResolution": "Node",
+    "esModuleInterop": true,
     "sourceMap": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -15,6 +17,5 @@
   },
   "exclude": [
     "node_modules"
-  ],
-  "compileOnSave": false
+  ]
 }

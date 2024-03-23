@@ -1,7 +1,5 @@
 import {
   I18NEntry,
-  SingleI18NEntry,
-  PluralI18NEntry,
   TranslationJson,
   TranslationMeta
 } from 'i18n-proto';
@@ -11,8 +9,8 @@ import { panic, warning } from './panic';
 const commentRegex = /^\s*#\s?\.\s?(.*)$/i;
 const occurenceRegex = /^\s*#\s?:\s?(.*)$/i;
 
-export function splitInTwo(src: string, separator: string = ' '): [string, string] {
-  let i = src.indexOf(separator);
+export function splitInTwo(src: string, separator = ' '): [string, string] {
+  const i = src.indexOf(separator);
   if (i === -1) { // no separator
     return [src, ''];
   }
@@ -21,13 +19,16 @@ export function splitInTwo(src: string, separator: string = ' '): [string, strin
 
 export function convert(data: string, opts: PoOptions): TranslationJson {
   // entries should be separated with double CRLF
-  let entries = data.split("\n\n").filter((e) => !!e);
+  const entries = data.split("\n\n").filter((e) => !!e);
   // first entry should be header
-  let header = entries.shift();
+  const header = entries.shift();
 
   return {
-    meta: parseHeader(header, opts),
+    meta: parseHeader(header!, opts),
     items: entries.map((entry) => parseEntry(entry, opts.withComments, opts.withOccurences))
+      .filter<I18NEntry>(function (e: I18NEntry): e is I18NEntry {
+        return !!e;
+      })
   };
 }
 
@@ -36,7 +37,7 @@ export function parseHeader(header: string, opts: PoOptions): TranslationMeta | 
     return;
   }
 
-  let entries = header.split("\n");
+  const entries = header.split("\n");
   let result: _ParseRetval;
 
   try {
@@ -46,11 +47,11 @@ export function parseHeader(header: string, opts: PoOptions): TranslationMeta | 
     return;
   }
 
-  let headers = result.msgStr.split("\n");
+  const headers = result.msgStr?.split("\n") ?? [];
 
   if (opts.withMeta === 'plural') {
     const pluralHeader = headers.filter((headerItem) => {
-      return headerItem.indexOf("Plural-Forms") === 0;
+      return headerItem.startsWith("Plural-Forms");
     })[0];
 
     if (!pluralHeader.length) {
@@ -65,8 +66,8 @@ export function parseHeader(header: string, opts: PoOptions): TranslationMeta | 
 
   }
 
-  return headers.reduce<TranslationMeta>((acc, header) => {
-    let [name, value] = splitInTwo(header, ':').map((v) => v.trim());
+  return headers.reduce<TranslationMeta>((acc, hdr) => {
+    const [name, value] = splitInTwo(hdr, ':').map((v) => v.trim());
     switch (name) {
       case "Project-Id-Version":
         acc.projectIdVersion = value;
@@ -81,7 +82,7 @@ export function parseHeader(header: string, opts: PoOptions): TranslationMeta | 
         acc.poRevisionDate = value;
         break;
       case "Last-Translator":
-        let matches = value.match(/(.*)\s*<(.+?)>/)
+        const matches = value.match(/(.*)\s*<(.+?)>/)
         if (matches) {
           acc.lastTranslator = {
             name: (matches[1] || '').trim(),
@@ -122,7 +123,7 @@ export function parseHeader(header: string, opts: PoOptions): TranslationMeta | 
 }
 
 export function parseEntry(entry: string, withComments: boolean, withOccurences: boolean): I18NEntry | undefined {
-  let entries = entry.split("\n");
+  const entries = entry.split("\n");
   let result: _ParseRetval;
 
   try {
@@ -132,15 +133,20 @@ export function parseEntry(entry: string, withComments: boolean, withOccurences:
     return;
   }
 
-  let {
+  const {
     comments, occurences,
     context, msgid, msgidPlural,
     msgStr, msgStrPlural,
   } = result;
 
-  if (msgidPlural || msgStrPlural.length > 0) {
+  if (msgidPlural && !msgStrPlural?.length) {
+    panic('Invalid entry: msgid_plural should have corresponding msgstr_plural entries', [msgid ?? '', msgidPlural ?? '']);
+    return;
+  }
+
+  if (msgStrPlural.length > 0) {
     if (!msgidPlural || msgStrPlural.length == 0) {
-      panic('Invalid plural entry: absent msgid_plural or msgstr[N] strings', [msgid, msgidPlural]);
+      panic('Invalid plural entry: absent msgid_plural or msgstr[N] strings', [msgid ?? '', msgidPlural ?? '']);
       return;
     }
 
@@ -151,7 +157,7 @@ export function parseEntry(entry: string, withComments: boolean, withOccurences:
     // valid plural form
     return {
       type: 'plural',
-      entry: [msgid, msgidPlural],
+      entry: [msgid ?? '', msgidPlural],
       context: context,
       translations: msgStrPlural,
       occurences: occurences.length > 0 ? occurences : undefined,
@@ -160,7 +166,7 @@ export function parseEntry(entry: string, withComments: boolean, withOccurences:
   }
 
   if (!msgid) {
-    panic('Invalid single entry: empty msgid string', [msgid]);
+    panic('Invalid single entry: empty msgid string', [msgid ?? '']);
     return;
   }
 
@@ -172,20 +178,20 @@ export function parseEntry(entry: string, withComments: boolean, withOccurences:
     type: 'single',
     entry: msgid,
     context: context,
-    translation: msgStr || undefined,
+    translation: msgStr ?? undefined,
     occurences: occurences.length > 0 ? occurences : undefined,
     comments: comments.length > 0 ? comments : undefined
   }
 }
 
 type _ParseRetval = {
-  comments: string[],
-  occurences: string[],
-  context?: string,
-  msgid?: string,
-  msgidPlural?: string,
-  msgStr?: string,
-  msgStrPlural: string[]
+  comments: string[];
+  occurences: string[];
+  context?: string;
+  msgid?: string;
+  msgidPlural?: string;
+  msgStr?: string;
+  msgStrPlural: string[];
 };
 
 // Exported for testing only!
@@ -195,35 +201,35 @@ export function _parse(entries: string[], withComments: boolean, withOccurences:
 
   let lastMode = null;
 
-  let comments: string[] = [];
-  let occurences: string[] = [];
-  let context: string | undefined;
-  let msgid: string | undefined;
-  let msgidPlural: string | undefined;
-  let msgStr: string | undefined;
-  let msgStrPlural: string[] = [];
+  const comments: string[] = [];
+  const occurences: string[] = [];
+  let context: string | undefined = undefined;
+  let msgid: string | undefined = undefined;
+  let msgidPlural: string | undefined = undefined;
+  let msgStr: string | undefined = undefined;
+  const msgStrPlural: string[] = [];
 
-  for (let entry of entries) {
+  for (const entry of entries) {
     // string continuations
-    if (lastMode && entry[0] === '"') {
+    if (lastMode && entry.startsWith('"')) {
       switch (lastMode) {
         case 'msgid':
-          msgid += JSON.parse(entry);
+          msgid = (msgid ?? '') + JSON.parse(entry);
           break;
         case 'msgid_plural':
-          msgidPlural += JSON.parse(entry);
+          msgidPlural = (msgidPlural ?? '') + JSON.parse(entry);
           break;
         case 'msgctxt':
-          context += JSON.parse(entry);
+          context = (context ?? '') + JSON.parse(entry);
           break;
         case 'msgstr':
-          msgStr += JSON.parse(entry);
+          msgStr = (msgStr ?? '') + JSON.parse(entry);
           break;
         default:
           // msgstr[N] instruction explicit handler
-          let pluralMatch = lastMode.match(/msgstr\[(\d+)\]/i);
+          const pluralMatch = lastMode.match(/msgstr\[(\d+)\]/i);
           if (pluralMatch) {
-            msgStrPlural[pluralMatch[1]] += JSON.parse(entry);
+            msgStrPlural[parseInt(pluralMatch[1], 10)] += JSON.parse(entry);
           }
           break;
       }
@@ -234,7 +240,7 @@ export function _parse(entries: string[], withComments: boolean, withOccurences:
 
     // comment
     if (withComments) {
-      let commentMatch = entry.match(commentRegex);
+      const commentMatch = entry.match(commentRegex);
       if (commentMatch) {
         comments.push(commentMatch[1]);
         continue;
@@ -243,7 +249,7 @@ export function _parse(entries: string[], withComments: boolean, withOccurences:
 
     // occurence
     if (withOccurences) {
-      let occurenceMatch = entry.match(occurenceRegex);
+      const occurenceMatch = entry.match(occurenceRegex);
       if (occurenceMatch) {
         occurences.push(occurenceMatch[1]);
         continue;
@@ -251,7 +257,7 @@ export function _parse(entries: string[], withComments: boolean, withOccurences:
     }
 
     // common instructions
-    let [instruction, body] = splitInTwo(entry);
+    const [instruction, body] = splitInTwo(entry);
     switch (instruction) {
       case 'msgid':
         msgid = JSON.parse(body);
@@ -267,9 +273,9 @@ export function _parse(entries: string[], withComments: boolean, withOccurences:
         break;
       default:
         // msgstr[N] instruction explicit handler
-        let pluralMatch = instruction.match(/msgstr\[(\d+)\]/i);
+        const pluralMatch = instruction.match(/msgstr\[(\d+)\]/i);
         if (pluralMatch) {
-          msgStrPlural[pluralMatch[1]] = JSON.parse(body);
+          msgStrPlural[parseInt(pluralMatch[1], 10)] = JSON.parse(body);
         }
         break;
     }
