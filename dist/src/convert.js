@@ -1,54 +1,61 @@
-import { panic, warning } from './panic';
-const commentRegex = /^\s*#\s?\.\s?(.*)$/i;
-const occurenceRegex = /^\s*#\s?:\s?(.*)$/i;
-export function splitInTwo(src, separator = ' ') {
-    const i = src.indexOf(separator);
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports._parse = exports.parseEntry = exports.parseHeader = exports.convert = exports.splitInTwo = void 0;
+var panic_1 = require("./panic");
+var commentRegex = /^\s*#\s?\.\s?(.*)$/i;
+var occurenceRegex = /^\s*#\s?:\s?(.*)$/i;
+function splitInTwo(src, separator) {
+    if (separator === void 0) { separator = ' '; }
+    var i = src.indexOf(separator);
     if (i === -1) { // no separator
         return [src, ''];
     }
     return [src.slice(0, i), src.slice(i + 1)];
 }
-export function convert(data, opts) {
+exports.splitInTwo = splitInTwo;
+function convert(data, opts) {
     // entries should be separated with double CRLF
-    const entries = data.split("\n\n").filter((e) => !!e);
+    var entries = data.split("\n\n").filter(function (e) { return !!e; });
     // first entry should be header
-    const header = entries.shift();
+    var header = entries.shift();
     return {
         meta: parseHeader(header, opts),
-        items: entries.map((entry) => parseEntry(entry, opts.withComments, opts.withOccurences))
+        items: entries.map(function (entry) { return parseEntry(entry, opts.withComments, opts.withOccurences); })
             .filter(function (e) {
             return !!e;
         })
     };
 }
-export function parseHeader(header, opts) {
+exports.convert = convert;
+function parseHeader(header, opts) {
+    var _a, _b;
     if (!opts.withMeta) {
         return;
     }
-    const entries = header.split("\n");
-    let result;
+    var entries = header.split("\n");
+    var result;
     try {
         result = _parse(entries, false, false);
     }
     catch (e) {
-        panic("Malformed string: can't parse: ", [e.message]);
+        (0, panic_1.panic)("Malformed string: can't parse: ", [e.message]);
         return;
     }
-    const headers = result.msgStr?.split("\n") ?? [];
+    var headers = (_b = (_a = result.msgStr) === null || _a === void 0 ? void 0 : _a.split("\n")) !== null && _b !== void 0 ? _b : [];
     if (opts.withMeta === 'plural') {
-        const pluralHeader = headers.filter((headerItem) => {
+        var pluralHeader = headers.filter(function (headerItem) {
             return headerItem.startsWith("Plural-Forms");
         })[0];
         if (!pluralHeader.length) {
             return;
         }
-        const value = splitInTwo(pluralHeader, ':').map((v) => v.trim())[1];
+        var value = splitInTwo(pluralHeader, ':').map(function (v) { return v.trim(); })[1];
         return {
             pluralForms: value
         };
     }
-    return headers.reduce((acc, hdr) => {
-        const [name, value] = splitInTwo(hdr, ':').map((v) => v.trim());
+    return headers.reduce(function (acc, hdr) {
+        var _a = splitInTwo(hdr, ':').map(function (v) { return v.trim(); }), name = _a[0], value = _a[1];
         switch (name) {
             case "Project-Id-Version":
                 acc.projectIdVersion = value;
@@ -63,7 +70,7 @@ export function parseHeader(header, opts) {
                 acc.poRevisionDate = value;
                 break;
             case "Last-Translator":
-                const matches = value.match(/(.*)\s*<(.+?)>/);
+                var matches = value.match(/(.*)\s*<(.+?)>/);
                 if (matches) {
                     acc.lastTranslator = {
                         name: (matches[1] || '').trim(),
@@ -71,7 +78,7 @@ export function parseHeader(header, opts) {
                     };
                 }
                 else {
-                    warning('Last-Translator header malformed', [value]);
+                    (0, panic_1.warning)('Last-Translator header malformed', [value]);
                 }
                 break;
             case "Language":
@@ -97,39 +104,40 @@ export function parseHeader(header, opts) {
                 break;
             default:
                 if (name) {
-                    warning('PO header: unknown clause', [name, value]);
+                    (0, panic_1.warning)('PO header: unknown clause', [name, value]);
                 }
         }
         return acc;
     }, {});
 }
-export function parseEntry(entry, withComments, withOccurences) {
-    const entries = entry.split("\n");
-    let result;
+exports.parseHeader = parseHeader;
+function parseEntry(entry, withComments, withOccurences) {
+    var entries = entry.split("\n");
+    var result;
     try {
         result = _parse(entries, withComments, withOccurences);
     }
     catch (e) {
-        panic("Malformed string: can't parse: ", [e.message]);
+        (0, panic_1.panic)("Malformed string: can't parse: ", [e.message]);
         return;
     }
-    const { comments, occurences, context, msgid, msgidPlural, msgStr, msgStrPlural, } = result;
-    if (msgidPlural && !msgStrPlural?.length) {
-        panic('Invalid entry: msgid_plural should have corresponding msgstr_plural entries', [msgid ?? '', msgidPlural ?? '']);
+    var comments = result.comments, occurences = result.occurences, context = result.context, msgid = result.msgid, msgidPlural = result.msgidPlural, msgStr = result.msgStr, msgStrPlural = result.msgStrPlural;
+    if (msgidPlural && !(msgStrPlural === null || msgStrPlural === void 0 ? void 0 : msgStrPlural.length)) {
+        (0, panic_1.panic)('Invalid entry: msgid_plural should have corresponding msgstr_plural entries', [msgid !== null && msgid !== void 0 ? msgid : '', msgidPlural !== null && msgidPlural !== void 0 ? msgidPlural : '']);
         return;
     }
     if (msgStrPlural.length > 0) {
         if (!msgidPlural || msgStrPlural.length == 0) {
-            panic('Invalid plural entry: absent msgid_plural or msgstr[N] strings', [msgid ?? '', msgidPlural ?? '']);
+            (0, panic_1.panic)('Invalid plural entry: absent msgid_plural or msgstr[N] strings', [msgid !== null && msgid !== void 0 ? msgid : '', msgidPlural !== null && msgidPlural !== void 0 ? msgidPlural : '']);
             return;
         }
-        if (msgStrPlural.length !== msgStrPlural.filter((v) => !!v).length) {
-            warning('Some of plural strings are untranslated', msgStrPlural);
+        if (msgStrPlural.length !== msgStrPlural.filter(function (v) { return !!v; }).length) {
+            (0, panic_1.warning)('Some of plural strings are untranslated', msgStrPlural);
         }
         // valid plural form
         return {
             type: 'plural',
-            entry: [msgid ?? '', msgidPlural],
+            entry: [msgid !== null && msgid !== void 0 ? msgid : '', msgidPlural],
             context: context,
             translations: msgStrPlural,
             occurences: occurences.length > 0 ? occurences : undefined,
@@ -137,52 +145,54 @@ export function parseEntry(entry, withComments, withOccurences) {
         };
     }
     if (!msgid) {
-        panic('Invalid single entry: empty msgid string', [msgid ?? '']);
+        (0, panic_1.panic)('Invalid single entry: empty msgid string', [msgid !== null && msgid !== void 0 ? msgid : '']);
         return;
     }
     if (!msgStr) {
-        warning('String is untranslated', [msgid]);
+        (0, panic_1.warning)('String is untranslated', [msgid]);
     }
     return {
         type: 'single',
         entry: msgid,
         context: context,
-        translation: msgStr ?? undefined,
+        translation: msgStr !== null && msgStr !== void 0 ? msgStr : undefined,
         occurences: occurences.length > 0 ? occurences : undefined,
         comments: comments.length > 0 ? comments : undefined
     };
 }
+exports.parseEntry = parseEntry;
 // Exported for testing only!
-export function _parse(entries, withComments, withOccurences) {
+function _parse(entries, withComments, withOccurences) {
     // prepare entries, trim spaces, etc
-    entries = entries.filter((e) => !!e).map((e) => e.trim());
-    let lastMode = null;
-    const comments = [];
-    const occurences = [];
-    let context = undefined;
-    let msgid = undefined;
-    let msgidPlural = undefined;
-    let msgStr = undefined;
-    const msgStrPlural = [];
-    for (const entry of entries) {
+    entries = entries.filter(function (e) { return !!e; }).map(function (e) { return e.trim(); });
+    var lastMode = null;
+    var comments = [];
+    var occurences = [];
+    var context = undefined;
+    var msgid = undefined;
+    var msgidPlural = undefined;
+    var msgStr = undefined;
+    var msgStrPlural = [];
+    for (var _i = 0, entries_1 = entries; _i < entries_1.length; _i++) {
+        var entry = entries_1[_i];
         // string continuations
         if (lastMode && entry.startsWith('"')) {
             switch (lastMode) {
                 case 'msgid':
-                    msgid = (msgid ?? '') + JSON.parse(entry);
+                    msgid = (msgid !== null && msgid !== void 0 ? msgid : '') + JSON.parse(entry);
                     break;
                 case 'msgid_plural':
-                    msgidPlural = (msgidPlural ?? '') + JSON.parse(entry);
+                    msgidPlural = (msgidPlural !== null && msgidPlural !== void 0 ? msgidPlural : '') + JSON.parse(entry);
                     break;
                 case 'msgctxt':
-                    context = (context ?? '') + JSON.parse(entry);
+                    context = (context !== null && context !== void 0 ? context : '') + JSON.parse(entry);
                     break;
                 case 'msgstr':
-                    msgStr = (msgStr ?? '') + JSON.parse(entry);
+                    msgStr = (msgStr !== null && msgStr !== void 0 ? msgStr : '') + JSON.parse(entry);
                     break;
                 default:
                     // msgstr[N] instruction explicit handler
-                    const pluralMatch = lastMode.match(/msgstr\[(\d+)\]/i);
+                    var pluralMatch = lastMode.match(/msgstr\[(\d+)\]/i);
                     if (pluralMatch) {
                         msgStrPlural[parseInt(pluralMatch[1], 10)] += JSON.parse(entry);
                     }
@@ -195,7 +205,7 @@ export function _parse(entries, withComments, withOccurences) {
         }
         // comment
         if (withComments) {
-            const commentMatch = entry.match(commentRegex);
+            var commentMatch = entry.match(commentRegex);
             if (commentMatch) {
                 comments.push(commentMatch[1]);
                 continue;
@@ -203,14 +213,14 @@ export function _parse(entries, withComments, withOccurences) {
         }
         // occurence
         if (withOccurences) {
-            const occurenceMatch = entry.match(occurenceRegex);
+            var occurenceMatch = entry.match(occurenceRegex);
             if (occurenceMatch) {
                 occurences.push(occurenceMatch[1]);
                 continue;
             }
         }
         // common instructions
-        const [instruction, body] = splitInTwo(entry);
+        var _a = splitInTwo(entry), instruction = _a[0], body = _a[1];
         switch (instruction) {
             case 'msgid':
                 msgid = JSON.parse(body);
@@ -226,7 +236,7 @@ export function _parse(entries, withComments, withOccurences) {
                 break;
             default:
                 // msgstr[N] instruction explicit handler
-                const pluralMatch = instruction.match(/msgstr\[(\d+)\]/i);
+                var pluralMatch = instruction.match(/msgstr\[(\d+)\]/i);
                 if (pluralMatch) {
                     msgStrPlural[parseInt(pluralMatch[1], 10)] = JSON.parse(body);
                 }
@@ -235,13 +245,14 @@ export function _parse(entries, withComments, withOccurences) {
         lastMode = instruction;
     }
     return {
-        comments,
-        occurences,
-        context,
-        msgid,
-        msgidPlural,
-        msgStr,
-        msgStrPlural,
+        comments: comments,
+        occurences: occurences,
+        context: context,
+        msgid: msgid,
+        msgidPlural: msgidPlural,
+        msgStr: msgStr,
+        msgStrPlural: msgStrPlural,
     };
 }
+exports._parse = _parse;
 //# sourceMappingURL=convert.js.map

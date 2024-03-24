@@ -4,7 +4,7 @@
     "paths": {
       "tslib": ["./node_modules/tslib/tslib.d.ts"]
     },
-    "target": "es2020",
+    "target": "es5",
     "moduleResolution": "Node",
     "esModuleInterop": true,
     "sourceMap": true,

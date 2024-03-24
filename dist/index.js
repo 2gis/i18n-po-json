@@ -1,9 +1,12 @@
-import { readFile, writeFile } from 'fs';
-import yargs, { showHelp } from 'yargs';
-import { hideBin } from 'yargs/helpers';
-import { convert } from './src/convert';
-import getStdin from 'get-stdin';
-yargs(hideBin(process.argv)).command('pojson', 'i18n PO -> JSON converter', (args) => {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var fs_1 = require("fs");
+var yargs_1 = tslib_1.__importStar(require("yargs"));
+var helpers_1 = require("yargs/helpers");
+var convert_1 = require("./src/convert");
+var get_stdin_1 = tslib_1.__importDefault(require("get-stdin"));
+(0, yargs_1.default)((0, helpers_1.hideBin)(process.argv)).command('pojson', 'i18n PO -> JSON converter', function (args) {
     args
         .option('src', {
         alias: 's',
@@ -47,15 +50,16 @@ yargs(hideBin(process.argv)).command('pojson', 'i18n PO -> JSON converter', (arg
         type: 'boolean',
         default: false
     });
-}, ({ help, src, output, withOccurences, withComments, withMeta, prettify }) => {
+}, function (_a) {
+    var help = _a.help, src = _a.src, output = _a.output, withOccurences = _a.withOccurences, withComments = _a.withComments, withMeta = _a.withMeta, prettify = _a.prettify;
     if (help) {
-        showHelp();
+        (0, yargs_1.showHelp)();
         process.exit(0);
     }
     console.warn('Running conversion for file: ', src);
-    const parsedOptions = {
-        withOccurences,
-        withComments,
+    var parsedOptions = {
+        withOccurences: withOccurences,
+        withComments: withComments,
         withMeta: false
     };
     if (withMeta === '' || withMeta === 'full') {
@@ -67,9 +71,9 @@ yargs(hideBin(process.argv)).command('pojson', 'i18n PO -> JSON converter', (arg
         }
     }
     if (src === '__stdin') {
-        getStdin().then((data) => {
+        (0, get_stdin_1.default)().then(function (data) {
             try {
-                makeOutput(convert(data, parsedOptions), output, prettify);
+                makeOutput((0, convert_1.convert)(data, parsedOptions), output, prettify);
             }
             catch (e) {
                 console.error(e);
@@ -78,13 +82,13 @@ yargs(hideBin(process.argv)).command('pojson', 'i18n PO -> JSON converter', (arg
         });
     }
     else {
-        readFile(src, { encoding: 'utf-8' }, (err, data) => {
+        (0, fs_1.readFile)(src, { encoding: 'utf-8' }, function (err, data) {
             if (err) {
                 console.error(err);
                 process.exit(1);
             }
             try {
-                makeOutput(convert(data, parsedOptions), output, prettify);
+                makeOutput((0, convert_1.convert)(data, parsedOptions), output, prettify);
             }
             catch (e) {
                 console.error(e);
@@ -98,7 +102,7 @@ function makeOutput(data, output, prettify) {
         console.log(JSON.stringify(data, undefined, prettify ? '  ' : undefined));
     }
     else {
-        writeFile(output, JSON.stringify(data, undefined, prettify ? '  ' : undefined), (e) => {
+        (0, fs_1.writeFile)(output, JSON.stringify(data, undefined, prettify ? '  ' : undefined), function (e) {
             if (e) {
                 console.error(e);
                 process.exit(1);
