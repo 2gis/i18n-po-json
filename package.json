@@ -1,14 +1,13 @@
 {
   "name": "i18n-po-json",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "i18n .po to .json file converter",
   "main": "dist/index.js",
   "scripts": {
     "lint": "eslint . --ext .js,.ts,.tsx",
     "test": "jest",
     "typecheck": "tsc -p . --noEmit",
-    "build": "rm -rf dist && tsc -p . --outDir dist",
-    "prepare": "yon build"
+    "build": "rm -rf dist && tsc -p . --outDir dist"
   },
   "keywords": [
     "i18n"
@@ -47,7 +46,6 @@
     "ts-jest": "^29.1.2",
     "ts-node": "^10.9.2",
     "tslib": "2.6.2",
-    "typescript": "5.3.3",
-    "yarn-or-npm": "^3.0.1"
+    "typescript": "5.3.3"
   }
 }
