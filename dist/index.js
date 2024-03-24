@@ -24,7 +24,7 @@ var parsedOptions = {
     withComments: options.withComments,
     withMeta: false
 };
-if (options.withMeta === '' || options.withMeta === 'full') {
+if (options.withMeta || options.withMeta === 'full') {
     parsedOptions.withMeta = 'full';
 }
 else {
